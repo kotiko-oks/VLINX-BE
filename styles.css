@@ -1,87 +1,93 @@
-/* General body styling */
+
 body {
-  background-color: #f3f4f6; /* bg-gray-100 */
+  background-color: #f3f4f6;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  padding: 16px; /* p-4 */
-  width: 320px; /* w-80 */
+  padding: 16px;
+  width: 320px;
 }
 
-/* Heading styling */
+
 h3 {
-  font-size: 1.125rem; /* text-lg */
-  font-weight: 700; /* font-bold */
-  color: #1f2937; /* text-gray-800 */
-  margin-bottom: 16px; /* mb-4 */
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 16px;
 }
 
-/* Input styling */
+
 input {
-  width: 100%; /* w-full */
-  padding: 8px; /* p-2 */
-  margin-bottom: 16px; /* mb-4 */
-  border: 1px solid #d1d5db; /* border */
-  border-radius: 6px; /* rounded-md */
-  background-color: #ffffff; /* bg-white */
-  color: #1f2937; /* text-gray-800 */
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #1f2937;
   outline: none;
 }
 
 input:focus {
-  border-color: #3b82f6; /* focus:ring-blue-500 */
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); /* focus:ring-2 */
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
 }
 
-/* Button container */
+
 .flex {
   display: flex;
-  gap: 8px; /* space-x-2 */
+  gap: 8px;
 }
 
-/* Button styling */
+
 button {
-  padding: 8px 16px; /* px-4 py-2 */
-  border-radius: 6px; /* rounded-md */
-  color: #ffffff; /* text-white */
-  transition: background-color 0.2s ease-in-out; /* transition */
+  padding: 8px 16px;
+  border-radius: 6px;
+  color: #ffffff;
+  transition: background-color 0.2s ease-in-out;
   border: none;
   cursor: pointer;
 }
 
-/* Connect button */
-#connect {
-  background-color: #2563eb; /* bg-blue-600 */
+
+#connect, #addDomain {
+  background-color: #2563eb;
 }
 
-#connect:hover {
-  background-color: #1d4ed8; /* hover:bg-blue-700 */
+#connect:hover, #addDomain:hover {
+  background-color: #1d4ed8;
 }
 
-/* Disconnect button */
-#disconnect {
-  background-color: #dc2626; /* bg-red-600 */
+#options {
+   background-color: #26e015;
+}
+#options:hover {
+   background-color: #22bb14;
 }
 
-#disconnect:hover {
-  background-color: #b91c1c; /* hover:bg-red-700 */
+#disconnect, .bg-red {
+  background-color: #dc2626;
 }
 
-/* Reset button */
+#disconnect:hover ,.bg-red:hover{
+  background-color: #b91c1c;
+}
+
+
 #reset {
-  background-color: #6b7280; /* bg-gray-500 */
+  background-color: #6b7280;
 }
 
 #reset:hover {
-  background-color: #4b5563; /* hover:bg-gray-600 */
+  background-color: #4b5563;
 }
 
-/* Status text */
+
 #status {
-  margin-top: 16px; /* mt-4 */
-  font-size: 0.875rem; /* text-sm */
-  color: #4b5563; /* text-gray-600 */
+  margin-top: 16px;
+  font-size: 0.875rem;
+  color: #4b5563;
 }
 
-/* Hidden class */
+
 .hidden {
   display: none;
 }

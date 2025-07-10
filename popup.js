@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const connectButton = document.getElementById('connect');
   const disconnectButton = document.getElementById('disconnect');
   const resetButton = document.getElementById('reset');
+  const optionsButton = document.getElementById('options');
   const statusElement = document.getElementById('status');
 
   // Load saved VLESS key and connection state
@@ -10,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (data.vlessKey) {
       vlessKeyInput.value = data.vlessKey;
     }
-    // Check actual connection status
     checkConnectionStatus((isConnected) => {
       updateUI(data.isConnected || isConnected);
     });
@@ -59,13 +59,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Options button click
+  optionsButton.addEventListener('click', () => {
+    chrome.runtime.openOptionsPage();
+  });
+
   // Check if the proxy is actually active
   function checkConnectionStatus(callback) {
     chrome.proxy.settings.get({}, (details) => {
-      const isConnected =
-        details.value.mode === 'fixed_servers' &&
-        details.value.rules.singleProxy.host === '127.0.0.1' &&
-        details.value.rules.singleProxy.port === 1080;
+      const isConnected = details.value.mode === 'pac_script'; // Теперь проверяем PAC-скрипт
       callback(isConnected);
     });
   }
