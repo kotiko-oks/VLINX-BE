@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "VLESS VPN",
+  "description": "Browser extension to establish a VPN connection using a VLESS key",
+  "version": "2.1",
+  "permissions": [
+    "proxy",
+    "nativeMessaging",
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "/icons/hi.png",
+      "48": "/icons/hi-48.png",
+      "128": "/icons/hi-128.png"
+    }
+  },
+  "icons": {
+      "16": "/icons/hi.png",
+      "48": "/icons/hi-48.png",
+      "128": "/icons/hi-128.png"
+  }
+}
+
+
