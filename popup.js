@@ -1,8 +1,10 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const resetButton = document.getElementById('reset');
   const vlessKeyInput = document.getElementById('vlessKey');
+  const vlessKeyContainer = document.getElementById('vlessKeyContainer');
+  
   const keyDisplay = document.getElementById('keyValue');
-  const keyDisplayContainer = document.getElementById('keyDisplay');
+  const keyDisplayContainer = document.getElementById('keyDisplayContainer');
   const connectButton = document.getElementById('connect');
   const disconnectButton = document.getElementById('disconnect');
   const addDomainButton = document.getElementById('addDomain');
@@ -97,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   function updateUI(isConnected, key) {
-    vlessKeyInput.classList.toggle('hidden', isConnected);
+    vlessKeyContainer.classList.toggle('hidden', isConnected);
     keyDisplayContainer.classList.toggle('hidden', !isConnected);
     connectButton.classList.toggle('hidden', isConnected);
     disconnectButton.classList.toggle('hidden', !isConnected);

@@ -9,11 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
       domainListElement.innerHTML = '';
       domains.forEach((domain, index) => {
         const li = document.createElement('li');
-        li.className = 'flex justify-between items-center mb-2';
+        li.className = 'flex justify-between items-center ';
         li.textContent = domain;
         const removeButton = document.createElement('button');
         removeButton.textContent = 'Remove';
-        removeButton.className = 'px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition bg-red';
+        removeButton.className = 'px-2 py-1     transition bg-red';
         removeButton.addEventListener('click', () => {
           domains.splice(index, 1);
           chrome.storage.local.set({ domains }, loadDomains);

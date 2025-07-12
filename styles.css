@@ -8,17 +8,16 @@ body {
 
 
 h3 {
+  margin: 0 0 6px 0;
   font-size: 1.125rem;
   font-weight: 700;
   color: #1f2937;
-  margin-bottom: 16px;
 }
 
 
 input {
   width: 100%;
   padding: 8px;
-  margin-bottom: 16px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   background-color: #ffffff;
@@ -46,11 +45,9 @@ button, a{
   border: none;
   cursor: pointer;
 }
-#keyDisplay{
-  margin: 0 0 10px 0;
-}
+
 #keySection{
-  padding: 10px 0 0 0;
+  padding: 16px 0 10px;
 }
 
 #connect, #addDomain {
