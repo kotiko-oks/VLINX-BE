@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+  const resetButton = document.getElementById('reset');
   const vlessKeyInput = document.getElementById('vlessKey');
   const keyDisplay = document.getElementById('keyValue');
   const connectButton = document.getElementById('connect');
@@ -31,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Обновляем интерфейс ключа и подключения
   if (isConnected) {
     vlessKeyInput.classList.add('hidden');
-    keyDisplay.textContent = storedKey;
+    keyDisplay.innerHTML = storedKey.replace(/&/g, '&<wbr>');
     keyDisplay.parentElement.classList.remove('hidden');
     disconnectButton.classList.remove('hidden');
   } else {
@@ -85,10 +86,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  resetButton.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'disconnect' }, (response) => {
+      chrome.storage.local.set({ isConnected: false, vlessKey: '' }, () => {
+        vlessKeyInput.value = '';
+        updateUI(false, storedKey);
+        updateStatus('Reset complete');
+      });
+    });
+  });
+
   function updateUI(isConnected, key) {
     if (isConnected) {
       vlessKeyInput.classList.add('hidden');
-      keyDisplay.textContent = key;
+      keyDisplay.innerHTML = key.replace(/&/g, '&<wbr>');
       keyDisplay.parentElement.classList.remove('hidden');
       connectButton.classList.add('hidden');
       disconnectButton.classList.remove('hidden');
