@@ -38,7 +38,7 @@ input:focus {
 }
 
 
-button {
+button, a{
   padding: 8px 16px;
   border-radius: 6px;
   color: #ffffff;
@@ -46,7 +46,6 @@ button {
   border: none;
   cursor: pointer;
 }
-
 
 #connect, #addDomain {
   background-color: #2563eb;
@@ -56,18 +55,18 @@ button {
   background-color: #1d4ed8;
 }
 
-#options {
+#options, #manageDomains {
    background-color: #26e015;
 }
-#options:hover {
+#options:hover, #manageDomains:hover {
    background-color: #22bb14;
 }
 
-#disconnect, .bg-red {
+#disconnect, #removeDomain, .bg-red {
   background-color: #dc2626;
 }
 
-#disconnect:hover ,.bg-red:hover{
+#disconnect:hover, #removeDomain:hover, .bg-red:hover{
   background-color: #b91c1c;
 }
 
@@ -80,6 +79,13 @@ button {
   background-color: #4b5563;
 }
 
+#back {
+  background-color: #ffa600;
+}
+
+#back:hover {
+  background-color: #dd9105;
+}
 
 #status {
   margin-top: 16px;

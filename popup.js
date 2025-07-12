@@ -1,86 +1,106 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const vlessKeyInput = document.getElementById('vlessKey');
+  const keyDisplay = document.getElementById('keyValue');
   const connectButton = document.getElementById('connect');
   const disconnectButton = document.getElementById('disconnect');
-  const resetButton = document.getElementById('reset');
-  const optionsButton = document.getElementById('options');
+  const addDomainButton = document.getElementById('addDomain');
+  const removeDomainButton = document.getElementById('removeDomain');
+  const currentDomainElement = document.getElementById('currentDomain');
   const statusElement = document.getElementById('status');
 
-  // Load saved VLESS key and connection state
-  chrome.storage.local.get(['vlessKey', 'isConnected'], (data) => {
-    if (data.vlessKey) {
-      vlessKeyInput.value = data.vlessKey;
+  // Получаем домен текущей вкладки
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const currentTab = tabs[0];
+  const currentUrl = currentTab.url;
+  const currentDomain = new URL(currentUrl).hostname;
+  currentDomainElement.textContent = currentDomain;
+
+  // Получаем сохраненные данные
+  const data = await chrome.storage.local.get(['vlessKey', 'domains', 'isConnected']);
+  const storedKey = data.vlessKey || '';
+  const domains = data.domains || [];
+  const isConnected = data.isConnected || false;
+
+  // Обновляем кнопки управления доменом
+  if (domains.includes(currentDomain)) {
+    removeDomainButton.classList.remove('hidden');
+  } else {
+    addDomainButton.classList.remove('hidden');
+  }
+
+  // Обновляем интерфейс ключа и подключения
+  if (isConnected) {
+    vlessKeyInput.classList.add('hidden');
+    keyDisplay.textContent = storedKey;
+    keyDisplay.parentElement.classList.remove('hidden');
+    disconnectButton.classList.remove('hidden');
+  } else {
+    vlessKeyInput.classList.remove('hidden');
+    vlessKeyInput.value = storedKey;
+    connectButton.classList.remove('hidden');
+  }
+
+  // Обработчики событий
+  addDomainButton.addEventListener('click', async () => {
+    domains.push(currentDomain);
+    await chrome.storage.local.set({ domains });
+    addDomainButton.classList.add('hidden');
+    removeDomainButton.classList.remove('hidden');
+    updateStatus(`Добавлен ${currentDomain} в список VPN`);
+  });
+
+  removeDomainButton.addEventListener('click', async () => {
+    const index = domains.indexOf(currentDomain);
+    if (index > -1) {
+      domains.splice(index, 1);
+      await chrome.storage.local.set({ domains });
+      removeDomainButton.classList.add('hidden');
+      addDomainButton.classList.remove('hidden');
+      updateStatus(`Удален ${currentDomain} из списка VPN`);
     }
-    checkConnectionStatus((isConnected) => {
-      updateUI(data.isConnected || isConnected);
-    });
   });
 
-  // Save VLESS key on input
-  vlessKeyInput.addEventListener('input', () => {
-    chrome.storage.local.set({ vlessKey: vlessKeyInput.value });
-  });
-
-  // Connect button click
-  connectButton.addEventListener('click', () => {
-    const vlessKey = vlessKeyInput.value;
+  connectButton.addEventListener('click', async () => {
+    const vlessKey = vlessKeyInput.value.trim();
     if (!vlessKey) {
-      updateStatus('Please enter a VLESS key');
+      updateStatus('Пожалуйста, введите ключ VLESS');
       return;
     }
     chrome.runtime.sendMessage({ action: 'connect', vlessKey }, (response) => {
       updateStatus(response.status);
       if (response.status === 'Connected') {
-        chrome.storage.local.set({ isConnected: true });
-        updateUI(true);
+        chrome.storage.local.set({ vlessKey, isConnected: true });
+        updateUI(true, vlessKey);
       }
     });
   });
 
-  // Disconnect button click
   disconnectButton.addEventListener('click', () => {
     chrome.runtime.sendMessage({ action: 'disconnect' }, (response) => {
       updateStatus(response.status);
       if (response.status === 'Disconnected') {
         chrome.storage.local.set({ isConnected: false });
-        updateUI(false);
+        updateUI(false, storedKey);
       }
     });
   });
 
-  // Reset button click
-  resetButton.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'disconnect' }, (response) => {
-      chrome.storage.local.set({ isConnected: false, vlessKey: '' }, () => {
-        vlessKeyInput.value = '';
-        updateUI(false);
-        updateStatus('Reset complete');
-      });
-    });
-  });
-
-  // Options button click
-  optionsButton.addEventListener('click', () => {
-    chrome.runtime.openOptionsPage();
-  });
-
-  // Check if the proxy is actually active
-  function checkConnectionStatus(callback) {
-    chrome.proxy.settings.get({}, (details) => {
-      const isConnected = details.value.mode === 'pac_script'; // Теперь проверяем PAC-скрипт
-      callback(isConnected);
-    });
+  function updateUI(isConnected, key) {
+    if (isConnected) {
+      vlessKeyInput.classList.add('hidden');
+      keyDisplay.textContent = key;
+      keyDisplay.parentElement.classList.remove('hidden');
+      connectButton.classList.add('hidden');
+      disconnectButton.classList.remove('hidden');
+    } else {
+      vlessKeyInput.classList.remove('hidden');
+      vlessKeyInput.value = key;
+      keyDisplay.parentElement.classList.add('hidden');
+      connectButton.classList.remove('hidden');
+      disconnectButton.classList.add('hidden');
+    }
   }
 
-  // Update UI based on connection state
-  function updateUI(isConnected) {
-    vlessKeyInput.disabled = isConnected;
-    connectButton.classList.toggle('hidden', isConnected);
-    disconnectButton.classList.toggle('hidden', !isConnected);
-    statusElement.textContent = isConnected ? 'Connected' : 'Disconnected';
-  }
-
-  // Update status message
   function updateStatus(message) {
     statusElement.textContent = message;
   }
