@@ -7,16 +7,20 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 
-<body class="bg-gray-100 font-sans p-4">
+<body>
   <h1>VLESS VPN Options</h1>
   <h2>Domains to use VPN</h2>
-  <ul id="domainList"></ul>
-  <input id="newDomain" placeholder="e.g., *.grok.com"
-    />
-  <button id="addDomain" class="transition">Add
-    Domain</button>
-  <a href="popup.html" id="back"
-    class="transition">Back</a>
+  <ul id="domainList" class="flex"></ul>
+  
+  <div id="keySection" class="padding16-0-10">
+    <input id="newDomain" placeholder="e.g., *.grok.com" />
+  </div>
+
+  <div class="flex">
+    <button id="addDomain" class="transition">Add Domain</button>
+    <a href="popup.html" id="back" class="transition">Back</a>
+  </div>
+
   <script src="options.js"></script>
 </body>
 

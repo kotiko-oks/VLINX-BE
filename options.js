@@ -9,16 +9,17 @@ document.addEventListener('DOMContentLoaded', () => {
       domainListElement.innerHTML = '';
       domains.forEach((domain, index) => {
         const li = document.createElement('li');
-        li.className = 'flex justify-between items-center ';
-        li.textContent = domain;
+        li.className = 'rm';
         const removeButton = document.createElement('button');
-        removeButton.textContent = 'Remove';
-        removeButton.className = 'px-2 py-1     transition bg-red';
+        removeButton.textContent = domain;
+        removeButton.className = 'transition remove-domain';
         removeButton.addEventListener('click', () => {
           domains.splice(index, 1);
           chrome.storage.local.set({ domains }, loadDomains);
         });
         li.appendChild(removeButton);
+
+
         domainListElement.appendChild(li);
       });
     });

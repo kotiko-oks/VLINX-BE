@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const resetButton = document.getElementById('reset');
   const vlessKeyInput = document.getElementById('vlessKey');
   const vlessKeyContainer = document.getElementById('vlessKeyContainer');
-  
   const keyDisplay = document.getElementById('keyValue');
   const keyDisplayContainer = document.getElementById('keyDisplayContainer');
   const connectButton = document.getElementById('connect');
