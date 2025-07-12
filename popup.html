@@ -1,43 +1,33 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <meta charset="UTF-8">
   <title>VLESS VPN</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-
 <body class="bg-gray-100 font-sans p-4 w-80">
   <h1 class="text-lg font-bold text-gray-800 mb-4">VLESS VPN</h1>
   <div id="domainSection">
     <h2 class="text-base font-semibold text-gray-700 mb-2">
-      <p>Current domain: <span id="currentDomain"></span></p>
+      Current domain: <span id="currentDomain"></span>
     </h2>
-    <button id="addDomain" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition hidden">Add
-      to VPN</button>
-    <button id="removeDomain"
-      class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition hidden">Remove from VPN</button>
+    <button id="addDomain" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition hidden">Add to VPN</button>
+    <button id="removeDomain" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition hidden">Remove from VPN</button>
   </div>
   <div id="keySection">
-    <input id="vlessKey" placeholder="Paste your VLESS key here"
-      class="w-full p-2 mb-4 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 hidden" />
-    <p id="keyDisplay" class="hidden">
-    <h3>Current key: </h3><span id="keyValue"></span></p>
+      <input id="vlessKey" placeholder="Paste your VLESS key here" class="w-full p-2 mb-4 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-800 hidden" />
+      <div id="keyDisplay" class="hidden">
+        <h3 class="text-sm font-semibold text-gray-700">Current key:</h3>
+        <span id="keyValue"></span>
+    </div>
   </div>
-  <div class="flex space-x-2">
-    <button id="connect"
-      class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition hidden">Connect</button>
-    <button id="disconnect"
-      class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition hidden">Disconnect</button>
-    <a href="options.html" id="options"
-      class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">Manage Domains</a>
+  <div class="flex">
+    <button id="connect" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition hidden">Connect</button>
+    <button id="disconnect" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition hidden">Disconnect</button>
+    <a href="options.html" id="options" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition">Manage Domains</a>
   </div>
   <p id="status" class="mt-4 text-sm text-gray-600"></p>
-  <button id="reset" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition"
-    title="Reset connection and clear settings">
-    Reset
-  </button>
+  <button id="reset" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition" title="Reset connection and clear settings">Reset</button>
   <script src="popup.js"></script>
 </body>
-
 </html>

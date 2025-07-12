@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const resetButton = document.getElementById('reset');
   const vlessKeyInput = document.getElementById('vlessKey');
   const keyDisplay = document.getElementById('keyValue');
+  const keyDisplayContainer = document.getElementById('keyDisplay');
   const connectButton = document.getElementById('connect');
   const disconnectButton = document.getElementById('disconnect');
   const addDomainButton = document.getElementById('addDomain');
@@ -9,11 +10,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentDomainElement = document.getElementById('currentDomain');
   const statusElement = document.getElementById('status');
 
+  function getDomainPattern(domain) {
+    const parts = domain.split('.');
+    if (parts.length > 2) {
+      return `*${parts.slice(-2).join('.')}`;
+    }
+    return domain;
+  }
+
   // Получаем домен текущей вкладки
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   const currentTab = tabs[0];
   const currentUrl = currentTab.url;
-  const currentDomain = new URL(currentUrl).hostname;
+  const currentDomain = getDomainPattern(new URL(currentUrl).hostname);
   currentDomainElement.textContent = currentDomain;
 
   // Получаем сохраненные данные
@@ -30,16 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Обновляем интерфейс ключа и подключения
-  if (isConnected) {
-    vlessKeyInput.classList.add('hidden');
-    keyDisplay.innerHTML = storedKey.replace(/&/g, '&<wbr>');
-    keyDisplay.parentElement.classList.remove('hidden');
-    disconnectButton.classList.remove('hidden');
-  } else {
-    vlessKeyInput.classList.remove('hidden');
-    vlessKeyInput.value = storedKey;
-    connectButton.classList.remove('hidden');
-  }
+  updateUI(isConnected, storedKey);
 
   // Обработчики событий
   addDomainButton.addEventListener('click', async () => {
@@ -97,19 +97,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   function updateUI(isConnected, key) {
-    if (isConnected) {
-      vlessKeyInput.classList.add('hidden');
-      keyDisplay.innerHTML = key.replace(/&/g, '&<wbr>');
-      keyDisplay.parentElement.classList.remove('hidden');
-      connectButton.classList.add('hidden');
-      disconnectButton.classList.remove('hidden');
-    } else {
-      vlessKeyInput.classList.remove('hidden');
-      vlessKeyInput.value = key;
-      keyDisplay.parentElement.classList.add('hidden');
-      connectButton.classList.remove('hidden');
-      disconnectButton.classList.add('hidden');
-    }
+    vlessKeyInput.classList.toggle('hidden', isConnected);
+    keyDisplayContainer.classList.toggle('hidden', !isConnected);
+    connectButton.classList.toggle('hidden', isConnected);
+    disconnectButton.classList.toggle('hidden', !isConnected);
+    keyDisplay.innerHTML = isConnected ? key.replace(/&/g, '&<wbr>') : '';
+    vlessKeyInput.value = isConnected ? '' : key;
   }
 
   function updateStatus(message) {

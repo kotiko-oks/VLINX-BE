@@ -46,6 +46,12 @@ button, a{
   border: none;
   cursor: pointer;
 }
+#keyDisplay{
+  margin: 0 0 10px 0;
+}
+#keySection{
+  padding: 10px 0 0 0;
+}
 
 #connect, #addDomain {
   background-color: #2563eb;
