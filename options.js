@@ -17,6 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
           domains.splice(index, 1);
           chrome.storage.local.set({ domains }, loadDomains);
         });
+        `
+        <div class="recycl-btn"></div>
+        <div class="copy-btn"></div>
+        `
         li.appendChild(removeButton);
 
 

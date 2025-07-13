@@ -6,22 +6,23 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>VLESS VPN</h1>
+  <h1 class="align-center">VLESS VPN</h1>
 
-  <div id="domainSection">
+  <div id="domainSection" class="margin0-0-16">
+    <h2>Current domain:</h2>
     <h2>
-      Current domain: <span id="currentDomain"></span>
+      <span id="currentDomain"></span>
+      <button id="addDomain" class="transition hidden">Add</button>
+      <button id="removeDomain" class="transition hidden">Remove</button>
     </h2>
-    <button id="addDomain" class="transition hidden">Add to VPN</button>
-    <button id="removeDomain" class="transition hidden">Remove from VPN</button>
   </div>
 
-  <div id="keySection" class="padding16-0-10">
-    <div id="keyDisplayContainer" class="hidden">
+  <div id="keySection" class="margin0-0-16">
+    <div id="keyDisplayContainer">
       <h3>Current key:</h3>
       <span id="keyValue"></span>
     </div>
-    <div id="vlessKeyContainer" class="hidden">
+    <div id="vlessKeyContainer">
       <h3>Enter key:</h3>
       <input id="vlessKey" placeholder="Paste your VLESS key here" />
     </div>
