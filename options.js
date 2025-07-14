@@ -12,33 +12,23 @@ document.addEventListener('DOMContentLoaded', () => {
         li.className = 'domain-btn button';
         
         const removeButton = document.createElement('div');
-        // removeButton.className = 'transition remove-domain';
-        removeButton.className = 'btn-recycl img-white btn-';
+        removeButton.className = 'btn-recycl  btn-';
         removeButton.addEventListener('click', () => {
           domains.splice(index, 1);
           chrome.storage.local.set({ domains }, loadDomains);
         });
 
         const copyButton = document.createElement('div');
-        copyButton.className = 'btn-copy img-white btn-';
+        copyButton.className = 'btn-copy  btn-';
         copyButton.addEventListener('click', (e) => {
           navigator.clipboard.writeText(domain)
           e.target.remove();
           removeButton.style.width = "100%";
-          // removeButton.style.backgroundSize = "contain"
         });
-        `
-        <div class="btn-recycl"></div>
-        <div class="btn-copy"></div>
-        <div class="btn-add"></div>
-        `
 
-        li.innerHTML = `
-        <div class="domain-text">${domain}</div>
-        `
+        li.innerHTML = `<div class="domain-text">${domain}</div>`
         li.appendChild(copyButton);
         li.appendChild(removeButton);
-
 
         domainListElement.appendChild(li);
       });

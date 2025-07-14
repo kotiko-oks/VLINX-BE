@@ -8,19 +8,17 @@
 <body>
   <h1 class="align-center">VLESS VPN</h1>
 
-  <div id="domainSection" class="margin0-0-16">
-    <h2>Current domain:</h2>
-    <h2>
-      <span id="currentDomain"></span>
-      <button id="addDomain" class="transition hidden">Add</button>
-      <button id="removeDomain" class="transition hidden">Remove</button>
-    </h2>
+  <h2>Current domain: </h2>
+  <div id="domainSection" class="margin0-0-16 flex">
+      <input id="currentDomain" disabled></input>
+      <div id="addDomain" class="btn-add transition hidden btn-"></div>
+      <div id="removeDomain" class="btn-recycl transition hidden btn-"></div>
   </div>
 
   <div id="keySection" class="margin0-0-16">
     <div id="keyDisplayContainer">
-      <h3>Current key:</h3>
-      <span id="keyValue"></span>
+      <h3>Current key:</h3><div class="btn-copy"></div>
+      <div id="keyValue"></div>
     </div>
     <div id="vlessKeyContainer">
       <h3>Enter key:</h3>
@@ -34,7 +32,7 @@
     <a href="options.html" id="options" class="transition">Manage Domains</a>
     <button id="reset" class="transition" title="Reset connection and clear settings">Reset</button>
   </div>
-
+  
   <p id="status"></p>
 
   <script src="popup.js"></script>

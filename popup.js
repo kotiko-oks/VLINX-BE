@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentTab = tabs[0];
   const currentUrl = currentTab.url;
   const currentDomain = getDomainPattern(new URL(currentUrl).hostname);
-  currentDomainElement.textContent = currentDomain;
+  currentDomainElement.value = currentDomain;
 
   // Получаем сохраненные данные
   const data = await chrome.storage.local.get(['vlessKey', 'domains', 'isConnected']);
