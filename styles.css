@@ -60,7 +60,6 @@ button, a, .button  {
   padding: 8px 16px;
   border-radius: 6px;
   transition: background-color 0.2s ease-in-out;
-  cursor: pointer;
 }
 
 button, a{
@@ -171,8 +170,17 @@ button, a{
 .domain-btn .btn-copy:hover{
     background-color: var(--blue);
 }
-.btn-{
+
+
+.btn-, button, .button, a{
+  -webkit-touch-callout: none;
+    -webkit-user-select: none;
+     -khtml-user-select: none;
+       -moz-user-select: none;
+        -ms-user-select: none;
+            user-select: none;
   cursor: pointer;
+  display: inline-block;
 }
 
 #domainSection .btn-{
@@ -185,7 +193,7 @@ button, a{
   right: 3px; 
   top: 50%; 
   transform: translateY(-50%); 
-  cursor: pointer; 
+  /* cursor: pointer;  */
 }
 
 #domainSection {
@@ -201,3 +209,21 @@ button, a{
   width: 100%;
 }
 
+#keyDisplayContainer .btn-{
+  border-radius: 6px;
+  background-size: auto 65%;
+  min-height: 28px;
+  min-width: 28px;
+}
+
+#keyDisplayContainer .flex{
+    align-items: center;
+    justify-content: flex-start;
+    position: relative; 
+}
+#copyKey{
+  background-color: var(--gray);
+}
+#copyKey:hover{
+  background-color: var(--gray-soft);
+}

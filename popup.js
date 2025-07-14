@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const removeDomainButton = document.getElementById('removeDomain');
   const currentDomainElement = document.getElementById('currentDomain');
   const statusElement = document.getElementById('status');
+  const copyKeyElement = document.getElementById('copyKey');
+  
 
   function getDomainPattern(domain) {
     const parts = domain.split('.');
@@ -95,6 +97,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateStatus('Reset complete');
       });
     });
+  });
+
+  copyKeyElement.addEventListener('click', (e) => {
+    navigator.clipboard.writeText(storedKey);
+    e.target.remove();
   });
 
   function updateUI(isConnected, key) {
