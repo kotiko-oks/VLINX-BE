@@ -208,6 +208,7 @@ button, a{
   width: 100%;
 }
 
+
 #keyDisplayContainer .btn-{
   border-radius: 6px;
   background-size: auto 65%;
@@ -221,9 +222,11 @@ button, a{
     position: relative; 
 }
 
+
 #copyKey{
   background-color: var(--gray);
 }
+
 
 #copyKey:hover{
   background-color: var(--gray-soft);
