@@ -190,12 +190,10 @@ button, a{
   background-size: auto 65%;
   min-height: 28px;
   min-width: 28px;
-
   position: absolute; 
   right: 3px; 
   top: 50%; 
   transform: translateY(-50%); 
-  /* cursor: pointer;  */
 }
 
 #domainSection {
