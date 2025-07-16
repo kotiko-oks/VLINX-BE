@@ -226,6 +226,7 @@ button, a{
   background-color: var(--gray);
 }
 
+
 #copyKey:hover{
   background-color: var(--gray-soft);
 }
