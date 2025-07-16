@@ -223,9 +223,11 @@ button, a{
     justify-content: flex-start;
     position: relative; 
 }
+
 #copyKey{
   background-color: var(--gray);
 }
+
 #copyKey:hover{
   background-color: var(--gray-soft);
 }
