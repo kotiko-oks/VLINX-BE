@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "VLESS VPN",
   "description": "Browser extension to establish a VPN connection using a VLESS key",
-  "version": "2.4",
+  "version": "2.5",
   "permissions": [
     "proxy",
     "nativeMessaging",
