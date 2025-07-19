@@ -28,6 +28,42 @@ function setProxyWithPAC(domains) {
   });
 }
 
+// Новая функция для проверки статуса Xray
+function checkXrayStatus() {
+  chrome.runtime.sendNativeMessage(NATIVE_HOST, { status: true }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('Native error:', chrome.runtime.lastError.message);
+      return;
+    }
+    const isRunning = response && response.running;
+    chrome.storage.local.get('isConnected', (data) => {
+      const isConnected = data.isConnected || false;
+      if (isConnected && !isRunning) {
+        // Если подключение должно быть, но Xray не работает, перезапускаем
+        chrome.storage.local.get('vlessKey', (data) => {
+          const vlessKey = data.vlessKey;
+          if (vlessKey) {
+            chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey }, (response) => {
+              if (response && response.success) {
+                console.log('Xray restarted successfully');
+                setProxyWithPAC(chrome.storage.local.get('domains', (data) => data.domains || []));
+              } else {
+                console.error('Failed to restart Xray:', response ? response.error : 'No response');
+                chrome.storage.local.set({ isConnected: false }); // Обновляем состояние
+              }
+            });
+          }
+        });
+      } else if (!isConnected && isRunning) {
+        // Если Xray работает, но состояние отключено, останавливаем его
+        chrome.runtime.sendNativeMessage(NATIVE_HOST, { stop: true }, () => {
+          chrome.proxy.settings.clear({ scope: 'regular' });
+        });
+      }
+    });
+  });
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Received message:', JSON.stringify(request));
   if (request.action === 'connect') {
@@ -81,3 +117,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     });
   }
 });
+
+// Проверяем статус при запуске и каждые 30 секунд
+checkXrayStatus();
+setInterval(checkXrayStatus, 30 * 1000);
