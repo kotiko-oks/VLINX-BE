@@ -1,52 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-
   <meta charset="UTF-8">
   <title>VLESS VPN</title>
-  <link rel="stylesheet" href="../css/styles.css">
-
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <h1 class="align-center">VLESS VPN</h1>
 
   <h2>Current domain: </h2>
   <div id="domainSection" class="margin0-0-16 flex">
-
       <input id="currentDomain" disabled></input>
-
       <div id="addDomain" class="btn-add transition hidden btn-"></div>
       <div id="removeDomain" class="btn-recycl transition hidden btn-"></div>
-
   </div>
 
   <div id="keySection" class="margin0-0-16">
-
     <div id="keyDisplayContainer">
       <h3 class="flex"><span>Current key:</span><div id="copyKey" class="btn-copy btn-"></div></h3>
       <div id="keyValue"></div>
     </div>
-
     <div id="vlessKeyContainer">
       <h3>Enter key:</h3>
       <input id="vlessKey" placeholder="Paste your VLESS key here" />
     </div>
-
   </div>
 
   <div class="flex">
-
     <button id="connect" class="transition hidden">Connect</button>
     <button id="disconnect" class="transition hidden">Disconnect</button>
-
     <a href="options.html" id="options" class="transition">Manage Domains</a>
-
     <button id="reset" class="transition" title="Reset connection and clear settings">Reset</button>
-
   </div>
   
   <p id="status"></p>
 
-  <script src="../js/popup.js"></script>
+  <script src="popup.js"></script>
 </body>
 </html>

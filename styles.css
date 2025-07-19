@@ -6,11 +6,9 @@
   --blue:#1d4ed8;
   --blue-soft:#2563eb;
 }
-
 *{
   box-sizing: border-box;
 }
-
 body {
   background-color: #f3f4f6;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -89,6 +87,7 @@ button, a{
 #disconnect:hover, #removeDomain:hover, .bg-red:hover {
   background-color: var(--red-soft);
 }
+
 
 #reset {
   background-color: var(--gray);
@@ -189,10 +188,12 @@ button, a{
   background-size: auto 65%;
   min-height: 28px;
   min-width: 28px;
+
   position: absolute; 
   right: 3px; 
   top: 50%; 
   transform: translateY(-50%); 
+  /* cursor: pointer;  */
 }
 
 #domainSection {
@@ -220,11 +221,9 @@ button, a{
     justify-content: flex-start;
     position: relative; 
 }
-
 #copyKey{
   background-color: var(--gray);
 }
-
 #copyKey:hover{
   background-color: var(--gray-soft);
 }

@@ -18,11 +18,13 @@ def log(message):
             f.write(message + '\n')
 
 def read_message():
+    # Read 4-byte length prefix
     raw_length = sys.stdin.buffer.read(4)
     if not raw_length:
         log('No input received')
         return None
     message_length = struct.unpack('@I', raw_length)[0]
+    # Read the message of specified length
     message = sys.stdin.buffer.read(message_length)
     try:
         return message.decode('utf-8')
@@ -31,6 +33,7 @@ def read_message():
         return message.decode('latin1')
 
 def send_message(message):
+    # Encode message and prepend 4-byte length
     encoded_message = json.dumps(message).encode('utf-8')
     length = len(encoded_message)
     sys.stdout.buffer.write(struct.pack('@I', length))
@@ -68,18 +71,14 @@ def main():
         message = json.loads(input_data)
         log('Parsed message: ' + str(message))
 
-        if 'status' in message:
-            result = subprocess.run(['pgrep', '-f', 'xray'], capture_output=True, text=True)
-            is_running = result.returncode == 0
-            send_message({"running": is_running})
-        elif 'stop' in message:
+        if 'stop' in message:
             log('Received stop command')
             subprocess.run(['pkill', '-f', 'xray'])
             if os.path.exists('/tmp/xray_config.json'):
                 os.remove('/tmp/xray_config.json')
             log('Xray stopped')
-            send_message({"success": True, "status": "Disconnected"})
-        elif 'vlessKey' in message:
+            send_message({"success": True})
+        else:
             vless_url = message["vlessKey"]
             config = parse_vless_url(vless_url)
             log('Parsed config: ' + str(config))
@@ -141,7 +140,7 @@ def main():
                 stderr=subprocess.STDOUT
             )
             log('Xray started')
-            send_message({"success": True, "status": "Connected"})
+            send_message({"success": True})
     except Exception as e:
         log('Error: ' + str(e))
         send_message({"success": False, "error": str(e)})
