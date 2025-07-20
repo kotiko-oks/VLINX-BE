@@ -1,6 +1,10 @@
 const NATIVE_HOST = 'com.example.vless_vpn';
 
 function generatePACScript(domains) {
+  if (!domains) {
+    console.error('Domains are undefined');
+    return '';
+  }
   const patterns = domains.map(domain => `'${domain}'`).join(', ');
   return `
     function FindProxyForURL(url, host) {
@@ -46,7 +50,10 @@ function checkXrayStatus() {
             chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey }, (response) => {
               if (response && response.success) {
                 console.log('Xray restarted successfully');
-                setProxyWithPAC(chrome.storage.local.get('domains', (data) => data.domains || []));
+                chrome.storage.local.get('domains', (data) => {
+                  const domains = data.domains || [];
+                  setProxyWithPAC(domains);
+                });
               } else {
                 console.error('Failed to restart Xray:', response ? response.error : 'No response');
                 chrome.storage.local.set({ isConnected: false }); // Обновляем состояние
