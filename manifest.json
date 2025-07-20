@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "VLINX",
   "description": "Browser extension to establish a VPN connection using a VLESS key",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "permissions": [
     "proxy",
     "nativeMessaging",

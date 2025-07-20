@@ -12,19 +12,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusElement = document.getElementById('status');
   const copyKeyElement = document.getElementById('copyKey');
 
-  function getDomainPattern(domain) {
-    const parts = domain.split('.');
-    if (parts.length > 2) {
-      return `*${parts.slice(-2).join('.')}`;
-    }
-    return domain;
-  }
-
   // Получаем домен текущей вкладки
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   const currentTab = tabs[0];
   const currentUrl = currentTab.url;
-  const currentDomain = getDomainPattern(new URL(currentUrl).hostname);
+  const currentDomain = new URL(currentUrl).hostname;
   currentDomainElement.value = currentDomain;
 
   // Получаем сохраненные данные
@@ -51,8 +43,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     isConnected = true;
   }
 
-  // Обновляем кнопки управления доменом
-  if (domains.includes(currentDomain)) {
+  // Проверяем, соответствует ли текущий домен какому-либо паттерну
+  const isDomainConnected = domains.some(pattern => shExpMatch(currentDomain, pattern));
+  if (isDomainConnected) {
     removeDomainButton.classList.remove('hidden');
   } else {
     addDomainButton.classList.remove('hidden');
@@ -71,13 +64,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   removeDomainButton.addEventListener('click', async () => {
-    const index = domains.indexOf(currentDomain);
-    if (index > -1) {
+    const matchingPatterns = domains.filter(pattern => shExpMatch(currentDomain, pattern));
+    if (matchingPatterns.length > 0) {
+      const patternToRemove = matchingPatterns[0]; // Удаляем первый совпадающий паттерн
+      const index = domains.indexOf(patternToRemove);
       domains.splice(index, 1);
       await chrome.storage.local.set({ domains });
+      updateStatus(`Удален паттерн ${patternToRemove} из списка VPN`);
       removeDomainButton.classList.add('hidden');
       addDomainButton.classList.remove('hidden');
-      updateStatus(`Удален ${currentDomain} из списка VPN`);
     }
   });
 
@@ -153,4 +148,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
   }
+
+  function shExpMatch(str, pattern) {
+  const escapedPattern = pattern.replace(/([.+^$[\]\\(){}|-])/g, '\\$1');
+  const regexPattern = escapedPattern.replace(/\*/g, '.*').replace(/\?/g, '.');
+  const regex = new RegExp(`^${regexPattern}$`);
+  return regex.test(str);
+}
 });
