@@ -51,6 +51,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     addDomainButton.classList.remove('hidden');
   }
 
+  // Устанавливаем начальный статус
+  updateStatus(
+    isConnected ? (
+      isDomainConnected ? 
+      `Подключено к ${currentDomain}` 
+      : `Прокси активен, но ${currentDomain} не в списке VPN`
+    ) : 'Прокси отключен'
+  );
+
   // Обновляем интерфейс
   updateUI(isConnected, storedKey);
 
@@ -150,9 +159,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function shExpMatch(str, pattern) {
-  const escapedPattern = pattern.replace(/([.+^$[\]\\(){}|-])/g, '\\$1');
-  const regexPattern = escapedPattern.replace(/\*/g, '.*').replace(/\?/g, '.');
-  const regex = new RegExp(`^${regexPattern}$`);
-  return regex.test(str);
-}
+    const escapedPattern = pattern.replace(/([.+^$[\]\\(){}|-])/g, '\\$1');
+    const regexPattern = escapedPattern.replace(/\*/g, '.*').replace(/\?/g, '.');
+    const regex = new RegExp(`^${regexPattern}$`);
+    return regex.test(str);
+  }
 });
