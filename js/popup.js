@@ -12,20 +12,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusElement = document.getElementById('status');
   const copyKeyElement = document.getElementById('copyKey');
 
-  // Получаем домен текущей вкладки
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   const currentTab = tabs[0];
   const currentUrl = currentTab.url;
   const currentDomain = new URL(currentUrl).hostname;
   currentDomainElement.value = currentDomain;
 
-  // Получаем сохраненные данные
-  const data = await chrome.storage.local.get(['vlessKey', 'domains', 'isConnected']);
+  const data = await chrome.storage.local.get(['vlessKey', 'domainMap', 'isConnected']);
   const storedKey = data.vlessKey || '';
-  const domains = data.domains || [];
+  const domainMap = data.domainMap || {};
   let isConnected = data.isConnected || false;
 
-  // Проверяем реальное состояние Xray
   const realStatus = await checkProxyStatus();
   if (isConnected && !realStatus) {
     updateStatus('Прокси не работает, перезапускается...');
@@ -43,15 +40,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     isConnected = true;
   }
 
-  // Проверяем, соответствует ли текущий домен какому-либо паттерну
-  const isDomainConnected = domains.some(pattern => shExpMatch(currentDomain, pattern));
+  const isDomainConnected = Object.keys(domainMap).some(mainDomain => shExpMatch(currentDomain, mainDomain));
   if (isDomainConnected) {
     removeDomainButton.classList.remove('hidden');
   } else {
     addDomainButton.classList.remove('hidden');
   }
 
-  // Устанавливаем начальный статус
   updateStatus(
     isConnected ? (
       isDomainConnected ? 
@@ -60,26 +55,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     ) : 'Прокси отключен'
   );
 
-  // Обновляем интерфейс
   updateUI(isConnected, storedKey);
 
-  // Обработчики событий
   addDomainButton.addEventListener('click', async () => {
-    domains.push(currentDomain);
-    await chrome.storage.local.set({ domains });
-    addDomainButton.classList.add('hidden');
-    removeDomainButton.classList.remove('hidden');
-    updateStatus(`Добавлен ${currentDomain} в список VPN`);
+    const mainDomain = currentDomain
+    if (mainDomain) {
+      domainMap[mainDomain] = [];
+      await chrome.storage.local.set({ domainMap });
+      updateStatus(`Добавлен основной домен ${mainDomain} в список VPN`);
+      if (shExpMatch(currentDomain, mainDomain)) {
+        addDomainButton.classList.add('hidden');
+        removeDomainButton.classList.remove('hidden');
+      }
+    }
   });
 
   removeDomainButton.addEventListener('click', async () => {
-    const matchingPatterns = domains.filter(pattern => shExpMatch(currentDomain, pattern));
-    if (matchingPatterns.length > 0) {
-      const patternToRemove = matchingPatterns[0]; // Удаляем первый совпадающий паттерн
-      const index = domains.indexOf(patternToRemove);
-      domains.splice(index, 1);
-      await chrome.storage.local.set({ domains });
-      updateStatus(`Удален паттерн ${patternToRemove} из списка VPN`);
+    const matchingMainDomains = Object.keys(domainMap).filter(mainDomain => shExpMatch(currentDomain, mainDomain));
+    if (matchingMainDomains.length > 0) {
+      const mainDomainToRemove = matchingMainDomains[0];
+      delete domainMap[mainDomainToRemove];
+      await chrome.storage.local.set({ domainMap });
+      updateStatus(`Удален основной домен ${mainDomainToRemove} из списка VPN`);
       removeDomainButton.classList.add('hidden');
       addDomainButton.classList.remove('hidden');
     }
@@ -120,7 +117,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   resetButton.addEventListener('click', () => {
     chrome.runtime.sendMessage({ action: 'disconnect' }, (response) => {
-      chrome.storage.local.set({ isConnected: false, vlessKey: '' }, () => {
+      chrome.storage.local.set({ isConnected: false, vlessKey: '', domainMap: {} }, () => {
         vlessKeyInput.value = '';
         updateUI(false, storedKey);
         updateStatus('Сброс завершен');

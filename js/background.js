@@ -1,11 +1,16 @@
 const NATIVE_HOST = 'com.example.vless_vpn';
 
-function generatePACScript(domains) {
-  if (!domains) {
-    console.error('Domains are undefined');
+function generatePACScript(domainMap) {
+  if (!domainMap) {
+    console.error('domainMap is undefined');
     return '';
   }
-  const patterns = domains.map(domain => `'${domain}'`).join(', ');
+  const patterns = Object.entries(domainMap)
+    .flatMap(([mainDomain, relatedDomains]) => [
+      `'${mainDomain}'`,
+      ...relatedDomains.map(domain => `'${domain}'`)
+    ])
+    .join(', ');
   return `
     function FindProxyForURL(url, host) {
       const patterns = [${patterns}];
@@ -19,8 +24,8 @@ function generatePACScript(domains) {
   `;
 }
 
-function setProxyWithPAC(domains) {
-  const pacScript = generatePACScript(domains);
+function setProxyWithPAC(domainMap) {
+  const pacScript = generatePACScript(domainMap);
   const proxySettings = {
     mode: 'pac_script',
     pacScript: {
@@ -32,7 +37,41 @@ function setProxyWithPAC(domains) {
   });
 }
 
-// Новая функция для проверки статуса Xray
+function trackRequests() {
+  chrome.webRequest.onBeforeRequest.addListener(
+    (details) => {
+      const mainUrl = new URL(details.initiator || details.url);
+      const relatedUrl = new URL(details.url);
+      const mainDomain = mainUrl.hostname;
+      const relatedDomain = relatedUrl.hostname;
+
+      if (mainDomain !== relatedDomain) {
+        chrome.storage.local.get('domainMap', (data) => {
+          const domainMap = data.domainMap || {};
+          let updated = false;
+
+          for (const pattern in domainMap) {
+            if (shExpMatch(mainDomain, pattern)) {
+              if (!domainMap[pattern].includes(relatedDomain)) {
+                domainMap[pattern].push(relatedDomain);
+                updated = true;
+              }
+              break;
+            }
+          }
+
+          if (updated) {
+            chrome.storage.local.set({ domainMap });
+          }
+        });
+      }
+    },
+    { urls: ["<all_urls>"] },
+    []
+  );
+}
+
+
 function checkXrayStatus() {
   chrome.runtime.sendNativeMessage(NATIVE_HOST, { status: true }, (response) => {
     if (chrome.runtime.lastError) {
@@ -43,26 +82,24 @@ function checkXrayStatus() {
     chrome.storage.local.get('isConnected', (data) => {
       const isConnected = data.isConnected || false;
       if (isConnected && !isRunning) {
-        // Если подключение должно быть, но Xray не работает, перезапускаем
         chrome.storage.local.get('vlessKey', (data) => {
           const vlessKey = data.vlessKey;
           if (vlessKey) {
             chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey }, (response) => {
               if (response && response.success) {
                 console.log('Xray restarted successfully');
-                chrome.storage.local.get('domains', (data) => {
-                  const domains = data.domains || [];
-                  setProxyWithPAC(domains);
+                chrome.storage.local.get('domainMap', (data) => {
+                  const domainMap = data.domainMap || {};
+                  setProxyWithPAC(domainMap);
                 });
               } else {
                 console.error('Failed to restart Xray:', response ? response.error : 'No response');
-                chrome.storage.local.set({ isConnected: false }); // Обновляем состояние
+                chrome.storage.local.set({ isConnected: false });
               }
             });
           }
         });
       } else if (!isConnected && isRunning) {
-        // Если Xray работает, но состояние отключено, останавливаем его
         chrome.runtime.sendNativeMessage(NATIVE_HOST, { stop: true }, () => {
           chrome.proxy.settings.clear({ scope: 'regular' });
         });
@@ -83,9 +120,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return;
       }
       if (response && response.success) {
-        chrome.storage.local.get('domains', (data) => {
-          const domains = data.domains || [];
-          setProxyWithPAC(domains);
+        chrome.storage.local.get('domainMap', (data) => {
+          const domainMap = data.domainMap || {};
+          setProxyWithPAC(domainMap);
           chrome.storage.local.set({ isConnected: true });
           sendResponse({ status: 'Connected' });
         });
@@ -110,21 +147,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       });
     });
   }
-  return true; // Asynchronous response
+  return true;
 });
 
-// Обновление PAC-скрипта при изменении списка доменов
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.domains) {
+  if (area === 'local' && changes.domainMap) {
     chrome.storage.local.get('isConnected', (data) => {
       if (data.isConnected) {
-        const newDomains = changes.domains.newValue;
-        setProxyWithPAC(newDomains);
+        const newDomainMap = changes.domainMap.newValue;
+        setProxyWithPAC(newDomainMap);
       }
     });
   }
 });
 
-// Проверяем статус при запуске и каждые 30 секунд
+function shExpMatch(str, pattern) {
+  const escapedPattern = pattern.replace(/([.+^$[\]\\(){}|-])/g, '\\$1');
+  const regexPattern = escapedPattern.replace(/\*/g, '.*').replace(/\?/g, '.');
+  const regex = new RegExp(`^${regexPattern}$`);
+  return regex.test(str);
+}
+
 checkXrayStatus();
 setInterval(checkXrayStatus, 30 * 1000);
+trackRequests();

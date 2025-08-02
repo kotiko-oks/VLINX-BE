@@ -11,6 +11,9 @@
     "scripting",
     "webRequest"
   ],
+  "host_permissions": [
+       "*://*/*"
+     ],
   "background": {
     "service_worker": "js/background.js"
   },
