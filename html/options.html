@@ -1,15 +1,29 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="UTF-8">
   <title>VLINX Options</title>
   <link rel="stylesheet" href="../css/styles.css">
 </head>
+
 <body>
   <h1 class="align-center">VLINX Options</h1>
   <h2>Domains to use VPN</h2>
-  <ul id="domainList" class="flex margin0-0-16"></ul>
-  
+
+  <table class="flex margin0-0-16">
+    <thead>
+      <tr class="flex">
+        <th>Партерн</th>
+        <th>Связанные домены</th>
+      </tr>
+    </thead>
+
+    <tbody id="domainList">
+
+    </tbody>
+  </table>
+
   <div id="keySection" class="margin0-0-16">
     <input id="newDomain" placeholder="e.g., *.example.com" />
   </div>
@@ -21,4 +35,5 @@
 
   <script src="../js/options.js"></script>
 </body>
+
 </html>

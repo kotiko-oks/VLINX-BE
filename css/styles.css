@@ -57,6 +57,7 @@ li {
 }
 
 button, a, .button  {
+  box-sizing: content-box;
   padding: 8px 16px;
   border-radius: 6px;
   transition: background-color 0.2s ease-in-out;
@@ -226,4 +227,33 @@ button, a{
 }
 #copyKey:hover{
   background-color: var(--gray-soft);
+}
+
+.line{
+  gap: 8px;
+  display: flex;
+  max-width: 100%;
+  width: 100%;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 8px 0;
+}
+
+.nowrap{
+  overflow: hidden;
+  max-width: 96%;
+  display: block;
+  word-wrap: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  hyphens: auto;
+}
+
+tr,thead{
+  width: 100%;
 }

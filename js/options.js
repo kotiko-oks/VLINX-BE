@@ -1,59 +1,66 @@
 document.addEventListener('DOMContentLoaded', () => {
-     const domainListElement = document.getElementById('domainList');
-     const newDomainInput = document.getElementById('newDomain');
-     const addDomainButton = document.getElementById('addDomain');
+  const domainListElement = document.getElementById('domainList');
+  const newDomainInput = document.getElementById('newDomain');
+  const addDomainButton = document.getElementById('addDomain');
 
-     function loadDomains() {
-       chrome.storage.local.get('domainMap', (data) => {
-         const domainMap = data.domainMap || {};
-         domainListElement.innerHTML = '';
-         Object.keys(domainMap).forEach((mainDomain) => {
-           const li = document.createElement('li');
-           li.className = 'domain-btn button';
+  function loadDomains() {
+    chrome.storage.local.get('domainMap', (data) => {
+      const domainMap = data.domainMap || {};
+      domainListElement.innerHTML = '';
+      Object.keys(domainMap).forEach((mainDomain) => {
+        const tr = document.createElement('tr');
+        tr.className = 'line';
 
-           const removeButton = document.createElement('div');
-           removeButton.className = 'btn-recycl btn-';
-           removeButton.addEventListener('click', () => {
-             delete domainMap[mainDomain];
-             chrome.storage.local.set({ domainMap }, loadDomains);
-           });
+        const pattern = document.createElement('td');
+        pattern.innerHTML = mainDomain
+        pattern.className = 'domain-btn button';
 
-           const copyButton = document.createElement('div');
-           copyButton.className = 'btn-copy btn-';
-           copyButton.addEventListener('click', (e) => {
-             navigator.clipboard.writeText(mainDomain);
-             e.target.remove();
-             removeButton.style.width = "100%";
-           });
+        const removeButton = document.createElement('div');
+        removeButton.className = 'btn-recycl btn-';
+        removeButton.addEventListener('click', () => {
+          delete domainMap[mainDomain];
+          chrome.storage.local.set({ domainMap }, loadDomains);
+        });
 
-           const relatedDomains = domainMap[mainDomain].length > 3
-             ? domainMap[mainDomain].slice(0, 3).join(', ') + '...'
-             : domainMap[mainDomain].join(', ');
+        const copyButton = document.createElement('div');
+        copyButton.className = 'btn-copy btn-';
+        copyButton.addEventListener('click', (e) => {
+          navigator.clipboard.writeText(mainDomain);
+          e.target.remove();
+          removeButton.style.width = "100%";
+        });
 
-           li.innerHTML = `<div class="domain-text">${mainDomain} (связанные: ${relatedDomains})</div>`;
-           li.appendChild(copyButton);
-           li.appendChild(removeButton);
+        pattern.appendChild(copyButton);
+        pattern.appendChild(removeButton);
 
-           domainListElement.appendChild(li);
-         });
-       });
-     }
+        const associated = document.createElement('td');
 
-     addDomainButton.addEventListener('click', () => {
-       const newDomain = newDomainInput.value.trim();
-       if (newDomain) {
-         chrome.storage.local.get('domainMap', (data) => {
-           const domainMap = data.domainMap || {};
-           if (!domainMap[newDomain]) {
-             domainMap[newDomain] = [];
-             chrome.storage.local.set({ domainMap }, () => {
-               newDomainInput.value = '';
-               loadDomains();
-             });
-           }
-         });
-       }
-     });
+        associated.className = 'nowrap';
+        associated.innerHTML = domainMap[mainDomain].join(', ');
 
-     loadDomains();
-   });
+        tr.appendChild(pattern);
+        tr.appendChild(associated);
+
+        domainListElement.appendChild(tr);
+      });
+    });
+  }
+
+  addDomainButton.addEventListener('click', () => {
+    const newDomain = newDomainInput.value.trim();
+    if (newDomain) {
+      chrome.storage.local.get('domainMap', (data) => {
+        const domainMap = data.domainMap || {};
+        if (!domainMap[newDomain]) {
+          domainMap[newDomain] = [];
+          chrome.storage.local.set({ domainMap }, () => {
+            newDomainInput.value = '';
+            loadDomains();
+          });
+        }
+      });
+    }
+  });
+
+  loadDomains();
+});
