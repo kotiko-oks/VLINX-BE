@@ -74,8 +74,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const matchingMainDomains = Object.keys(domainMap).filter(mainDomain => shExpMatch(currentDomain, mainDomain));
     if (matchingMainDomains.length > 0) {
       const mainDomainToRemove = matchingMainDomains[0];
+      const flagData = await chrome.storage.local.get('noAutoRelated');
+      let noAutoRelated = flagData.noAutoRelated || {};
+      delete noAutoRelated[mainDomainToRemove];
       delete domainMap[mainDomainToRemove];
-      await chrome.storage.local.set({ domainMap });
+      await chrome.storage.local.set({ domainMap, noAutoRelated });
       updateStatus(`Удален основной домен ${mainDomainToRemove} из списка VPN`);
       removeDomainButton.classList.add('hidden');
       addDomainButton.classList.remove('hidden');
@@ -117,7 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   resetButton.addEventListener('click', () => {
     chrome.runtime.sendMessage({ action: 'disconnect' }, (response) => {
-      chrome.storage.local.set({ isConnected: false, vlessKey: '', domainMap: {} }, () => {
+      chrome.storage.local.set({ isConnected: false, vlessKey: '', domainMap: {}, noAutoRelated: {} }, () => {
         vlessKeyInput.value = '';
         updateUI(false, storedKey);
         updateStatus('Сброс завершен');

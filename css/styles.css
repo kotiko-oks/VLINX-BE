@@ -1,10 +1,8 @@
 :root{
   --red: #e72323;
-  --red-soft: #b91c1c;
   --gray: #6b7280;
-  --gray-soft: #4b5563;
-  --blue:#1d4ed8;
-  --blue-soft:#2563eb;
+  --blue:#3b73eb;
+  --green:#4ee430;
 }
 *{
   box-sizing: border-box;
@@ -73,29 +71,15 @@ button, a{
 }
 
 #connect, #addDomain {
-  background-color: var(--blue-soft);
-}
-
-#connect:hover, #addDomain:hover {
   background-color: var(--blue);
 }
-
 
 #disconnect, #removeDomain, .bg-red {
   background-color: var(--red);
 }
 
-#disconnect:hover, #removeDomain:hover, .bg-red:hover {
-  background-color: var(--red-soft);
-}
-
-
 #reset {
   background-color: var(--gray);
-}
-
-#reset:hover {
-  background-color: var(--gray-soft);
 }
 
 #back, #options {
@@ -133,6 +117,14 @@ button, a{
   background: url('data:image/svg+xml;utf8,    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="%23fff" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/>      <line x1="5" y1="12" x2="19" y2="12"/>    </svg>') no-repeat center;
 }
 
+.btn-exclude {
+  background: url('data:image/svg+xml;utf8,  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="%23fff" stroke-width="2" viewBox="0 0 24 24">    <circle cx="12" cy="12" r="9"/>    <line x1="6" y1="6" x2="18" y2="18"/>  </svg>') no-repeat center;
+}
+
+.btn-join {
+  background: url('data:image/svg+xml;utf8,  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="%23fff" stroke-width="2" viewBox="0 0 24 24">    <path d="M10 13a5 5 0 010-7l1-1a5 5 0 017 7l-1 1"/>    <path d="M14 11a5 5 0 010 7l-1 1a5 5 0 01-7-7l1-1"/>  </svg>') no-repeat center;
+}
+
 .domain-btn{
   min-width: 70px;
   text-align: center;
@@ -143,33 +135,44 @@ button, a{
   position: relative;
 }
 
-.domain-btn .btn-{
+.buttons-window{
   bottom: -100%;
   position: absolute;
-  width: 50%;
+  width: 100%;
   height: 100%;
-  background-size: auto 65%;
   transition: all 0.2s linear;
+  left: 0;
+  display: flex;
 }
 
-.domain-btn:hover .btn-{
+.domain-btn:hover .buttons-window{
   bottom: 0;
 }
 
-.domain-btn .btn-recycl{
-  background-color: var(--red);
-  right: 0;
-}
-.domain-btn .btn-recycl:hover{
-  background-color: var(--red-soft)
+.buttons-window .btn-{
+  flex: 1;
+  height: 100%;
+  background-size: auto 65%;
 }
 
-.domain-btn .btn-copy{
-  background-color: var(--blue-soft);
-  left: 0;
+.buttons-window .btn-recycl{
+  background-color: var(--red);
 }
-.domain-btn .btn-copy:hover{
-    background-color: var(--blue);
+
+.buttons-window .btn-copy{
+  background-color: var(--blue);
+}
+
+.buttons-window .btn-exclude, .buttons-window .btn-join{
+  background-color: var(--green);
+}
+
+#connect:hover, #addDomain:hover,
+#copyKey:hover,
+#disconnect:hover, #removeDomain:hover, .bg-red:hover,
+#reset:hover,
+.btn-:hover{
+  filter: brightness(0.9);
 }
 
 
@@ -194,7 +197,6 @@ button, a{
   right: 3px; 
   top: 50%; 
   transform: translateY(-50%); 
-  /* cursor: pointer;  */
 }
 
 #domainSection {
@@ -224,9 +226,6 @@ button, a{
 }
 #copyKey{
   background-color: var(--gray);
-}
-#copyKey:hover{
-  background-color: var(--gray-soft);
 }
 
 .line{

@@ -4,8 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const addDomainButton = document.getElementById('addDomain');
 
   function loadDomains() {
-    chrome.storage.local.get('domainMap', (data) => {
+    chrome.storage.local.get(['domainMap', 'noAutoRelated'], (data) => {
       const domainMap = data.domainMap || {};
+      const noAutoRelated = data.noAutoRelated || {};
       domainListElement.innerHTML = '';
       Object.keys(domainMap).forEach((mainDomain) => {
         const tr = document.createElement('tr');
@@ -15,23 +16,59 @@ document.addEventListener('DOMContentLoaded', () => {
         pattern.innerHTML = mainDomain
         pattern.className = 'domain-btn button';
 
+        const patternButtons = document.createElement('div');
+        patternButtons.className = 'buttons-window';
+
+        const isNoAuto = !!noAutoRelated[mainDomain];
+
         const removeButton = document.createElement('div');
         removeButton.className = 'btn-recycl btn-';
+        removeButton.title = 'Удалить'
         removeButton.addEventListener('click', () => {
-          delete domainMap[mainDomain];
-          chrome.storage.local.set({ domainMap }, loadDomains);
+          chrome.storage.local.get(['domainMap', 'noAutoRelated'], (ddata) => {
+            const ddomainMap = ddata.domainMap || {};
+            const dnoAutoRelated = ddata.noAutoRelated || {};
+            delete ddomainMap[mainDomain];
+            delete dnoAutoRelated[mainDomain];
+            chrome.storage.local.set({ domainMap: ddomainMap, noAutoRelated: dnoAutoRelated }, loadDomains);
+          });
         });
 
         const copyButton = document.createElement('div');
         copyButton.className = 'btn-copy btn-';
+        copyButton.title = 'Копировать'
         copyButton.addEventListener('click', (e) => {
           navigator.clipboard.writeText(mainDomain);
           e.target.remove();
           removeButton.style.width = "100%";
         });
 
-        pattern.appendChild(copyButton);
-        pattern.appendChild(removeButton);
+        const excludeButton = document.createElement('div');
+        excludeButton.className = (isNoAuto ? 'btn-join' : 'btn-exclude') + ' btn-'
+        excludeButton.title = isNoAuto 
+          ? 'Исключать связанные домены по ссылкам (активно)' 
+          : 'Добавлять связанные домены автоматически';
+        excludeButton.addEventListener('click', () => {
+          chrome.storage.local.get('noAutoRelated', (fdata) => {
+            let noAuto = fdata.noAutoRelated || {};
+            const currently = !!noAuto[mainDomain];
+            noAuto[mainDomain] = !currently;
+            if (!noAuto[mainDomain]) {
+              delete noAuto[mainDomain];
+            }
+            chrome.storage.local.set({ noAutoRelated: noAuto });
+            excludeButton.className = (!currently ? 'btn-join' : 'btn-exclude') + ' btn-';
+            excludeButton.title = !currently
+              ? 'Исключать связанные домены по ссылкам (активно)'
+              : 'Добавлять связанные домены автоматически';
+          });
+        });
+
+        patternButtons.appendChild(copyButton);
+        patternButtons.appendChild(excludeButton);
+        patternButtons.appendChild(removeButton);
+
+        pattern.appendChild(patternButtons);
 
         const associated = document.createElement('td');
 

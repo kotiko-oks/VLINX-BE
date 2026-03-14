@@ -46,15 +46,18 @@ function trackRequests() {
       const relatedDomain = relatedUrl.hostname;
 
       if (mainDomain !== relatedDomain) {
-        chrome.storage.local.get('domainMap', (data) => {
+        chrome.storage.local.get(['domainMap', 'noAutoRelated'], (data) => {
           const domainMap = data.domainMap || {};
+          const noAutoRelated = data.noAutoRelated || {};
           let updated = false;
 
           for (const pattern in domainMap) {
             if (shExpMatch(mainDomain, pattern)) {
-              if (!domainMap[pattern].includes(relatedDomain)) {
-                domainMap[pattern].push(relatedDomain);
-                updated = true;
+              if (!noAutoRelated[pattern]) {
+                if (!domainMap[pattern].includes(relatedDomain)) {
+                  domainMap[pattern].push(relatedDomain);
+                  updated = true;
+                }
               }
               break;
             }
