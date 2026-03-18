@@ -138,7 +138,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     keyDisplayContainer.classList.toggle('hidden', !isConnected);
     connectButton.classList.toggle('hidden', isConnected);
     disconnectButton.classList.toggle('hidden', !isConnected);
-    keyDisplay.innerHTML = isConnected ? key.replace(/&/g, '&<wbr>') : '';
+    keyDisplay.textContent = isConnected ? key : '';
+    keyDisplay.style.whiteSpace = 'pre-wrap';
+    keyDisplay.style.wordBreak = 'break-all';
     vlessKeyInput.value = isConnected ? '' : key;
   }
 
