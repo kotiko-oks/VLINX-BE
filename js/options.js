@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const domainListElement = document.getElementById('domainList');
   const newDomainInput = document.getElementById('newDomain');
   const addDomainButton = document.getElementById('addDomain');
+  const globalProxyCheckbox = document.getElementById('globalProxy');
 
   function loadDomains() {
     chrome.storage.local.get(['domainMap', 'noAutoRelated'], (data) => {
@@ -83,6 +84,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function loadGlobalProxy() {
+    chrome.storage.local.get(['globalProxy'], (data) => {
+      globalProxyCheckbox.checked = !!data.globalProxy;
+    });
+  }
+
+  globalProxyCheckbox.addEventListener('change', () => {
+    chrome.storage.local.set({ globalProxy: globalProxyCheckbox.checked });
+  });
+
   addDomainButton.addEventListener('click', () => {
     const newDomain = newDomainInput.value.trim();
     if (newDomain) {
@@ -100,4 +111,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   loadDomains();
+  loadGlobalProxy();
 });

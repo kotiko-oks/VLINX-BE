@@ -26,17 +26,39 @@ function generatePACScript(domainMap, proxyPort = 1080) {
   `;
 }
 
-function setProxyWithPAC(domainMap, proxyPort = 1080) {
-  const pacScript = generatePACScript(domainMap, proxyPort);
-  const proxySettings = {
-    mode: 'pac_script',
-    pacScript: {
-      data: pacScript
-    }
-  };
+function applyProxySettings(proxyPort = 1080) {
+  chrome.storage.local.get(['domainMap', 'globalProxy'], (data) => {
+    const globalProxy = !!data.globalProxy;
+    const domainMap = data.domainMap || {};
 
-  chrome.proxy.settings.set({ value: proxySettings, scope: 'regular' }, () => {
-    console.log('Proxy settings applied with PAC script on port', proxyPort);
+    if (globalProxy) {
+      const proxySettings = {
+        mode: 'fixed_servers',
+        rules: {
+          singleProxy: {
+            scheme: 'socks5',
+            host: '127.0.0.1',
+            port: proxyPort
+          }
+        }
+      };
+
+      chrome.proxy.settings.set({ value: proxySettings, scope: 'regular' }, () => {
+        console.log('Global proxy settings applied (all traffic) on port', proxyPort);
+      });
+    } else {
+      const pacScript = generatePACScript(domainMap, proxyPort);
+      const proxySettings = {
+        mode: 'pac_script',
+        pacScript: {
+          data: pacScript
+        }
+      };
+
+      chrome.proxy.settings.set({ value: proxySettings, scope: 'regular' }, () => {
+        console.log('Proxy settings applied with PAC script on port', proxyPort);
+      });
+    }
   });
 }
 
@@ -97,12 +119,7 @@ function checkXrayStatus() {
               if (restartResponse && restartResponse.success) {
                 const newPort = restartResponse.port || proxyPort;
                 chrome.storage.local.set({ proxyPort: newPort });
-
-                chrome.storage.local.get('domainMap', (domainData) => {
-                  const domainMap = domainData.domainMap || {};
-                  setProxyWithPAC(domainMap, newPort);
-                });
-
+                applyProxySettings(newPort);
                 console.log('Xray restarted successfully');
               } else {
                 console.error('Failed to restart Xray:', restartResponse ? restartResponse.error : 'No response');
@@ -135,13 +152,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       if (response && response.success) {
         const proxyPort = response.port || 1080;
-
-        chrome.storage.local.get('domainMap', (data) => {
-          const domainMap = data.domainMap || {};
-          setProxyWithPAC(domainMap, proxyPort);
-          chrome.storage.local.set({ isConnected: true, proxyPort });
-          sendResponse({ status: 'Connected' });
-        });
+        applyProxySettings(proxyPort);
+        chrome.storage.local.set({ isConnected: true, proxyPort });
+        sendResponse({ status: 'Connected' });
       } else {
         console.error('Native response error:', response ? response.error : 'No response');
         sendResponse({ status: 'Error: ' + (response ? response.error : 'No response from native host') });
@@ -170,12 +183,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.domainMap) {
+  if (area === 'local' && (changes.domainMap || changes.globalProxy)) {
     chrome.storage.local.get(['isConnected', 'proxyPort'], (data) => {
       if (data.isConnected) {
-        const newDomainMap = changes.domainMap.newValue;
         const proxyPort = data.proxyPort || 1080;
-        setProxyWithPAC(newDomainMap, proxyPort);
+        applyProxySettings(proxyPort);
       }
     });
   }
