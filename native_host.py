@@ -54,7 +54,8 @@ def parse_vless_url(vless_url):
         'pbk': query.get('pbk', [None])[0],
         'fp': query.get('fp', [''])[0],
         'sid': query.get('sid', [''])[0],
-        'spx': query.get('spx', [''])[0]
+        'spx': query.get('spx', [''])[0],
+        'flow': query.get('flow', [None])[0],
     }
     return config
 
@@ -93,7 +94,8 @@ def build_config_from_vless(vless_url):
                             "users": [
                                 {
                                     "id": config["id"],
-                                    "encryption": "none"
+                                    "encryption": "none",
+                                    "flow": config["flow"]
                                 }
                             ]
                         }
