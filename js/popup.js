@@ -18,44 +18,51 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentDomain = new URL(currentUrl).hostname;
   currentDomainElement.value = currentDomain;
 
-  const data = await chrome.storage.local.get(['vlessKey', 'domainMap', 'isConnected']);
+  const data = await chrome.storage.local.get(['vlessKey', 'domainMap', 'isConnected', 'startupError']);
   const storedKey = data.vlessKey || '';
   const domainMap = data.domainMap || {};
   let isConnected = data.isConnected || false;
+  const startupError = data.startupError || null;
 
-  const realStatus = await checkProxyStatus();
-  if (isConnected && !realStatus) {
-    updateStatus('Прокси не работает, перезапускается...');
-    chrome.runtime.sendMessage({ action: 'connect', vlessKey: storedKey }, (response) => {
-      if (response && response.status === 'Connected') {
-        updateStatus('Прокси перезапущен');
-      } else {
-        updateStatus('Ошибка при перезапуске прокси');
-        isConnected = false;
-      }
-      updateUI(isConnected, storedKey);
-    });
-  } else if (!isConnected && realStatus) {
-    chrome.storage.local.set({ isConnected: true });
-    isConnected = true;
-  }
-
-  const isDomainConnected = Object.keys(domainMap).some(mainDomain => shExpMatch(currentDomain, mainDomain));
-  if (isDomainConnected) {
-    removeDomainButton.classList.remove('hidden');
+  if (startupError) {
+    chrome.storage.local.set({ startupError: null });
+    updateStatus('Ошибка');
+    updateUI(false, storedKey);
   } else {
-    addDomainButton.classList.remove('hidden');
+    const realStatus = await checkProxyStatus();
+    if (isConnected && !realStatus) {
+      updateStatus('Прокси не работает, перезапускается...');
+      chrome.runtime.sendMessage({ action: 'connect', vlessKey: storedKey }, (response) => {
+        if (response && response.status === 'Connected') {
+          updateStatus('Прокси перезапущен');
+        } else {
+          updateStatus('Ошибка при перезапуске прокси');
+          isConnected = false;
+        }
+        updateUI(isConnected, storedKey);
+      });
+    } else if (!isConnected && realStatus) {
+      chrome.storage.local.set({ isConnected: true });
+      isConnected = true;
+    }
+
+    const isDomainConnected = Object.keys(domainMap).some(mainDomain => shExpMatch(currentDomain, mainDomain));
+    if (isDomainConnected) {
+      removeDomainButton.classList.remove('hidden');
+    } else {
+      addDomainButton.classList.remove('hidden');
+    }
+
+    updateStatus(
+      isConnected ? (
+        isDomainConnected ?
+        `Подключено к ${currentDomain}`
+        : `Прокси активен, но ${currentDomain} не в списке VPN`
+      ) : 'Прокси отключен'
+    );
+
+    updateUI(isConnected, storedKey);
   }
-
-  updateStatus(
-    isConnected ? (
-      isDomainConnected ? 
-      `Подключено к ${currentDomain}` 
-      : `Прокси активен, но ${currentDomain} не в списке VPN`
-    ) : 'Прокси отключен'
-  );
-
-  updateUI(isConnected, storedKey);
 
   addDomainButton.addEventListener('click', async () => {
     const mainDomain = currentDomain

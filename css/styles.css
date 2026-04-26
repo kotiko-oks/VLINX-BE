@@ -78,6 +78,10 @@ button, a{
   background-color: var(--red);
 }
 
+#retry {
+  background-color: #e67e22;
+}
+
 #reset {
   background-color: var(--gray);
 }
