@@ -41,9 +41,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         updateUI(isConnected, storedKey);
       });
-    } else if (!isConnected && realStatus) {
-      chrome.storage.local.set({ isConnected: true });
-      isConnected = true;
     }
 
     const isDomainConnected = Object.keys(domainMap).some(mainDomain => shExpMatch(currentDomain, mainDomain));
