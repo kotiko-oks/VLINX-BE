@@ -1,20 +1,16 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const resetButton = document.getElementById('reset');
-  const vlessKeyInput = document.getElementById('vlessKey');
-  const vlessKeyContainer = document.getElementById('vlessKeyContainer');
-  const keyDisplay = document.getElementById('keyValue');
-  const keyDisplayContainer = document.getElementById('keyDisplayContainer');
-  const connectButton = document.getElementById('connect');
-  const disconnectButton = document.getElementById('disconnect');
   const addDomainButton = document.getElementById('addDomain');
   const removeDomainButton = document.getElementById('removeDomain');
   const currentDomainElement = document.getElementById('currentDomain');
   const statusElement = document.getElementById('status');
-  const copyKeyElement = document.getElementById('copyKey');
-  const serverSelectContainer = document.getElementById('serverSelectContainer');
+  const connectButton = document.getElementById('connect');
+  const disconnectButton = document.getElementById('disconnect');
+
+  const sourceSelect = document.getElementById('sourceSelect');
   const serverSelect = document.getElementById('serverSelect');
+  const serverSelectContainer = document.getElementById('serverSelectContainer');
   const subscriptionInfo = document.getElementById('subscriptionInfo');
-  const refreshSubButton = document.getElementById('refreshSub');
 
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   const currentTab = tabs[0];
@@ -24,34 +20,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const data = await chrome.storage.local.get([
     'vlessKey', 'domainMap', 'isConnected', 'startupError',
-    'subscriptionUrl', 'subscriptionServers', 'selectedServerIndex', 'subscriptionInfo', 'subscriptionUpdatedAt'
+    'subscriptions', 'manualKeys', 'active'
   ]);
-  const storedKey = data.vlessKey || '';
   const domainMap = data.domainMap || {};
   let isConnected = data.isConnected || false;
   const startupError = data.startupError || null;
-  let subscriptionServers = data.subscriptionServers || [];
-  let selectedServerIndex = data.selectedServerIndex || 0;
+  let subscriptions = data.subscriptions || [];
+  let manualKeys = data.manualKeys || [];
+  let active = data.active || null;
 
-  renderSubscription(subscriptionServers, selectedServerIndex, data.subscriptionInfo, data.subscriptionUpdatedAt);
+  renderSources(subscriptions, manualKeys, active);
 
   if (startupError) {
     chrome.storage.local.set({ startupError: null });
-    updateStatus('Ошибка');
-    updateUI(false, storedKey);
+    updateStatus('Ошибка запуска');
+    updateUI(false);
   } else {
     const realStatus = await checkProxyStatus();
     if (isConnected && !realStatus) {
       updateStatus('Прокси не работает, перезапускается...');
-      chrome.runtime.sendMessage({ action: 'connect', vlessKey: storedKey }, (response) => {
-        if (response && response.status === 'Connected') {
-          updateStatus('Прокси перезапущен');
-        } else {
-          updateStatus('Ошибка при перезапуске прокси');
-          isConnected = false;
-        }
-        updateUI(isConnected, storedKey);
-      });
+      const key = await getActiveKey();
+      if (key) {
+        chrome.runtime.sendMessage({ action: 'connect', vlessKey: key }, (response) => {
+          if (response && response.status === 'Connected') {
+            updateStatus('Прокси перезапущен');
+          } else {
+            updateStatus('Ошибка при перезапуске прокси');
+            isConnected = false;
+          }
+          updateUI(isConnected);
+        });
+      }
     }
 
     const isDomainConnected = Object.keys(domainMap).some(mainDomain => shExpMatch(currentDomain, mainDomain));
@@ -69,7 +68,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       ) : 'Прокси отключен'
     );
 
-    updateUI(isConnected, storedKey);
+    updateUI(isConnected);
+  }
+
+  sourceSelect.addEventListener('change', () => {
+    const val = sourceSelect.value; // 'sub:id' или 'manual:id'
+    renderServerSelect(val, subscriptions, manualKeys);
+    if (isConnected) autoReconnect();
+  });
+
+  serverSelect.addEventListener('change', () => {
+    if (isConnected) autoReconnect(); 
+  });
+
+  function autoReconnect() {
+    const key = resolveSelectedKey();
+    if (!key) return;
+    const newActive = resolveSelectedActive();
+    chrome.storage.local.set({ active: newActive, vlessKey: key });
+    active = newActive;
+    connectWithKey(key);
   }
 
   addDomainButton.addEventListener('click', async () => {
@@ -101,41 +119,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   connectButton.addEventListener('click', async () => {
-    const input = vlessKeyInput.value.trim();
-    if (!input) {
-      updateStatus('Пожалуйста, введите ключ, JSON или URL подписки');
-      return;
-    }
-
-    // Если это URL подписки — сначала забираем список серверов
-    if (/^https?:\/\//i.test(input)) {
-      updateStatus('Загрузка подписки...');
-      const subResp = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ action: 'fetchSubscription', subscriptionUrl: input }, resolve);
-      });
-      if (!subResp || !subResp.success) {
-        updateStatus('Ошибка подписки: ' + (subResp ? subResp.error : 'нет ответа'));
-        return;
-      }
-      const servers = subResp.servers;
-      const firstKey = servers[0].key;
-      await chrome.storage.local.set({
-        subscriptionUrl: input,
-        subscriptionServers: servers,
-        subscriptionInfo: subResp.info,
-        subscriptionUpdatedAt: Date.now(),
-        selectedServerIndex: 0,
-        vlessKey: firstKey
-      });
-      subscriptionServers = servers;
-      selectedServerIndex = 0;
-      renderSubscription(servers, 0, subResp.info, Date.now());
-      connectWithKey(firstKey);
-      return;
-    }
-
-    connectWithKey(input);
+    const key = resolveSelectedKey();
+    if (!key) { updateStatus('Выберите сервер или добавьте ключи в настройках'); return; }
+    const newActive = resolveSelectedActive();
+    await chrome.storage.local.set({ active: newActive, vlessKey: key });
+    active = newActive;
+    connectWithKey(key);
   });
+
+  function resolveSelectedKey() {
+    const src = sourceSelect.value;
+    if (!src) return null;
+    const [type, id] = src.split(':');
+    if (type === 'sub') {
+      const sub = subscriptions.find(s => s.id === id);
+      if (!sub || !sub.servers.length) return null;
+      const idx = parseInt(serverSelect.value, 10) || 0;
+      return sub.servers[idx] ? sub.servers[idx].key : null;
+    } else {
+      const mk = manualKeys.find(k => k.id === id);
+      return mk ? mk.key : null;
+    }
+  }
+
+  function resolveSelectedActive() {
+    const src = sourceSelect.value;
+    if (!src) return null;
+    const [type, id] = src.split(':');
+    if (type === 'sub') {
+      return { type: 'sub', subId: id, serverIdx: parseInt(serverSelect.value, 10) || 0 };
+    } else {
+      return { type: 'manual', keyId: id };
+    }
+  }
 
   function connectWithKey(vlessKey) {
     updateStatus('Подключение...');
@@ -143,8 +159,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (response && response.status) {
         updateStatus(response.status);
         if (response.status === 'Connected') {
-          chrome.storage.local.set({ vlessKey, isConnected: true });
-          updateUI(true, vlessKey);
+          isConnected = true;
+          chrome.storage.local.set({ isConnected: true });
+          updateUI(true);
         }
       } else {
         updateStatus('Ошибка соединения');
@@ -152,56 +169,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  serverSelect.addEventListener('change', async () => {
-    const idx = parseInt(serverSelect.value, 10);
-    if (isNaN(idx) || !subscriptionServers[idx]) return;
-    selectedServerIndex = idx;
-    const newKey = subscriptionServers[idx].key;
-    await chrome.storage.local.set({ selectedServerIndex: idx, vlessKey: newKey });
-    if (isConnected) {
-      updateStatus('Переключение сервера...');
-      connectWithKey(newKey);
-    } else {
-      updateStatus(`Выбран сервер: ${subscriptionServers[idx].name}`);
-    }
-  });
-
-  refreshSubButton.addEventListener('click', async () => {
-    const sd = await chrome.storage.local.get('subscriptionUrl');
-    if (!sd.subscriptionUrl) {
-      updateStatus('Нет сохранённой подписки');
-      return;
-    }
-    updateStatus('Обновление подписки...');
-    const subResp = await new Promise((resolve) => {
-      chrome.runtime.sendMessage({ action: 'fetchSubscription', subscriptionUrl: sd.subscriptionUrl }, resolve);
-    });
-    if (!subResp || !subResp.success) {
-      updateStatus('Ошибка обновления: ' + (subResp ? subResp.error : 'нет ответа'));
-      return;
-    }
-    const idx = Math.min(selectedServerIndex, subResp.servers.length - 1);
-    await chrome.storage.local.set({
-      subscriptionServers: subResp.servers,
-      subscriptionInfo: subResp.info,
-      subscriptionUpdatedAt: Date.now(),
-      selectedServerIndex: idx,
-      vlessKey: subResp.servers[idx].key
-    });
-    subscriptionServers = subResp.servers;
-    selectedServerIndex = idx;
-    renderSubscription(subResp.servers, idx, subResp.info, Date.now());
-    updateStatus(`Подписка обновлена: ${subResp.servers.length} серверов`);
-    if (isConnected) connectWithKey(subResp.servers[idx].key);
-  });
-
   disconnectButton.addEventListener('click', () => {
     chrome.runtime.sendMessage({ action: 'disconnect' }, (response) => {
       if (response && response.status) {
         updateStatus(response.status);
         if (response.status === 'Disconnected') {
+          isConnected = false;
           chrome.storage.local.set({ isConnected: false });
-          updateUI(false, storedKey);
+          updateUI(false);
         }
       } else {
         updateStatus('Ошибка отключения');
@@ -210,46 +185,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   resetButton.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'disconnect' }, (response) => {
+    chrome.runtime.sendMessage({ action: 'disconnect' }, () => {
       chrome.storage.local.set({
         isConnected: false,
         vlessKey: '',
-        domainMap: {},
-        noAutoRelated: {},
-        subscriptionUrl: '',
-        subscriptionServers: [],
-        subscriptionInfo: null,
-        subscriptionUpdatedAt: 0,
-        selectedServerIndex: 0
+        active: null,
       }, () => {
-        vlessKeyInput.value = '';
-        subscriptionServers = [];
-        selectedServerIndex = 0;
-        renderSubscription([], 0, null, 0);
-        updateUI(false, '');
+        isConnected = false;
+        active = null;
+        updateUI(false);
         updateStatus('Сброс завершен');
       });
     });
   });
 
-  copyKeyElement.addEventListener('click', (e) => {
-    navigator.clipboard.writeText(storedKey);
-    e.target.remove();
-  });
-
-  function updateUI(isConnected, key) {
-    vlessKeyContainer.classList.toggle('hidden', isConnected);
-    keyDisplayContainer.classList.toggle('hidden', !isConnected);
-    connectButton.classList.toggle('hidden', isConnected);
-    disconnectButton.classList.toggle('hidden', !isConnected);
-    keyDisplay.textContent = isConnected ? key : '';
-    keyDisplay.style.whiteSpace = 'pre-wrap';
-    keyDisplay.style.wordBreak = 'break-all';
-    vlessKeyInput.value = isConnected ? '' : key;
+  function updateUI(connected) {
+    connectButton.classList.toggle('hidden', connected);
+    disconnectButton.classList.toggle('hidden', !connected);
   }
 
   function updateStatus(message) {
     statusElement.textContent = message;
+  }
+
+  async function getActiveKey() {
+    return new Promise(resolve => {
+      chrome.runtime.sendMessage({ action: 'getActiveKey' }, r => resolve(r ? r.key : null));
+    });
   }
 
   function formatBytes(n) {
@@ -265,28 +227,69 @@ document.addEventListener('DOMContentLoaded', async () => {
     return new Date(ts * 1000).toLocaleDateString();
   }
 
-  function renderSubscription(servers, idx, info, updatedAt) {
-    if (!servers || servers.length === 0) {
+  function renderSources(subs, manuals, active) {
+    sourceSelect.innerHTML = '';
+
+    const addOpt = (value, label, group) => {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = label;
+      group.appendChild(opt);
+    };
+
+    if (subs.length) {
+      const grp = document.createElement('optgroup');
+      grp.label = 'Подписки';
+      subs.forEach(s => addOpt(`sub:${s.id}`, s.name || s.url, grp));
+      sourceSelect.appendChild(grp);
+    }
+
+    if (manuals.length) {
+      const grp = document.createElement('optgroup');
+      grp.label = 'Ручные ключи';
+      manuals.forEach(k => addOpt(`manual:${k.id}`, k.name || k.key.slice(0, 40) + '…', grp));
+      sourceSelect.appendChild(grp);
+    }
+
+    // Восстанавливаем активный выбор
+    if (active) {
+      if (active.type === 'sub') sourceSelect.value = `sub:${active.subId}`;
+      else sourceSelect.value = `manual:${active.keyId}`;
+    }
+
+    renderServerSelect(sourceSelect.value, subs, manuals, active);
+  }
+
+  function renderServerSelect(srcValue, subs, manuals, active) {
+    if (!srcValue) { serverSelectContainer.classList.add('hidden'); return; }
+    const [type, id] = srcValue.split(':');
+
+    if (type === 'sub') {
+      const sub = subs.find(s => s.id === id);
+      if (!sub || !sub.servers || !sub.servers.length) {
+        serverSelectContainer.classList.add('hidden');
+        return;
+      }
+      serverSelectContainer.classList.remove('hidden');
+      serverSelect.innerHTML = '';
+      sub.servers.forEach((s, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = s.name || s.host || `Server ${i + 1}`;
+        if (active && active.type === 'sub' && active.subId === id && active.serverIdx === i) opt.selected = true;
+        serverSelect.appendChild(opt);
+      });
+      const u = sub.info && sub.info.userinfo ? sub.info.userinfo : {};
+      const used = (u.upload || 0) + (u.download || 0);
+      const parts = [];
+      if (u.total) parts.push(`Трафик: ${formatBytes(used)} / ${formatBytes(u.total)}`);
+      if (u.expire) parts.push(`До: ${formatExpire(u.expire)}`);
+      if (sub.updatedAt) parts.push(`Обновлено: ${new Date(sub.updatedAt).toLocaleString()}`);
+      subscriptionInfo.textContent = parts.join(' • ');
+    } else {
       serverSelectContainer.classList.add('hidden');
       subscriptionInfo.textContent = '';
-      return;
     }
-    serverSelectContainer.classList.remove('hidden');
-    serverSelect.innerHTML = '';
-    servers.forEach((s, i) => {
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = s.name || s.host || `Server ${i + 1}`;
-      if (i === idx) opt.selected = true;
-      serverSelect.appendChild(opt);
-    });
-    const u = info && info.userinfo ? info.userinfo : {};
-    const used = (u.upload || 0) + (u.download || 0);
-    const parts = [];
-    if (u.total) parts.push(`Трафик: ${formatBytes(used)} / ${formatBytes(u.total)}`);
-    if (u.expire) parts.push(`До: ${formatExpire(u.expire)}`);
-    if (updatedAt) parts.push(`Обновлено: ${new Date(updatedAt).toLocaleString()}`);
-    subscriptionInfo.textContent = parts.join(' • ');
   }
 
   async function checkProxyStatus() {

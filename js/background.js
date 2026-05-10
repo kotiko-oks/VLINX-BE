@@ -39,9 +39,22 @@ function showErrorOnActiveTab(errorMessage) {
 }
 
 function startupConnect() {
-  chrome.storage.local.get(['isConnected', 'vlessKey', 'proxyPort'], (data) => {
+  chrome.storage.local.get(['isConnected', 'vlessKey', 'proxyPort', 'subscriptions', 'manualKeys', 'active'], (data) => {
     if (!data.isConnected) return;
-    const vlessKey = data.vlessKey;
+
+    // Резолвим актуальный ключ из active
+    let vlessKey = data.vlessKey;
+    const active = data.active;
+    if (active) {
+      if (active.type === 'sub') {
+        const sub = (data.subscriptions || []).find(s => s.id === active.subId);
+        if (sub && sub.servers[active.serverIdx]) vlessKey = sub.servers[active.serverIdx].key;
+      } else if (active.type === 'manual') {
+        const mk = (data.manualKeys || []).find(k => k.id === active.keyId);
+        if (mk) vlessKey = mk.key;
+      }
+    }
+
     if (!vlessKey) {
       chrome.storage.local.set({ isConnected: false });
       return;
@@ -219,29 +232,36 @@ function fetchSubscription(subUrl) {
 }
 
 async function refreshSubscription() {
-  const data = await chrome.storage.local.get(['subscriptionUrl', 'selectedServerIndex', 'isConnected']);
-  if (!data.subscriptionUrl) return;
-  console.log('Refreshing subscription...');
-  const resp = await fetchSubscription(data.subscriptionUrl);
-  if (!resp.success) {
-    console.error('Subscription refresh failed:', resp.error);
-    return;
-  }
-  const idx = Math.min(data.selectedServerIndex || 0, resp.servers.length - 1);
-  await chrome.storage.local.set({
-    subscriptionServers: resp.servers,
-    subscriptionInfo: resp.info,
-    subscriptionUpdatedAt: Date.now(),
-    selectedServerIndex: idx,
-    vlessKey: resp.servers[idx].key
-  });
-  if (data.isConnected) {
-    chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey: resp.servers[idx].key }, (r) => {
-      if (r && r.success) {
-        applyProxySettings(r.port || 1080);
-        chrome.storage.local.set({ proxyPort: r.port || 1080 });
-      }
-    });
+  const data = await chrome.storage.local.get(['subscriptions', 'active', 'isConnected']);
+  const subscriptions = data.subscriptions || [];
+  if (!subscriptions.length) return;
+
+  const updated = await Promise.all(subscriptions.map(async (sub) => {
+    const resp = await fetchSubscription(sub.url);
+    if (!resp.success) {
+      console.error('Refresh failed for', sub.url, resp.error);
+      return sub; // оставляем старые данные
+    }
+    return { ...sub, servers: resp.servers, info: resp.info, updatedAt: Date.now() };
+  }));
+
+  await chrome.storage.local.set({ subscriptions: updated });
+
+  // Если активен сервер из подписки — переподключаем с новым ключом
+  const active = data.active;
+  if (data.isConnected && active && active.type === 'sub') {
+    const sub = updated.find(s => s.id === active.subId);
+    if (sub && sub.servers.length) {
+      const idx = Math.min(active.serverIdx || 0, sub.servers.length - 1);
+      const key = sub.servers[idx].key;
+      chrome.storage.local.set({ vlessKey: key });
+      chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey: key }, (r) => {
+        if (r && r.success) {
+          applyProxySettings(r.port || 1080);
+          chrome.storage.local.set({ proxyPort: r.port || 1080 });
+        }
+      });
+    }
   }
 }
 
@@ -255,6 +275,22 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
   if (request.action === 'fetchSubscription') {
     fetchSubscription(request.subscriptionUrl).then(sendResponse);
+    return true;
+  }
+
+  if (request.action === 'getActiveKey') {
+    chrome.storage.local.get(['subscriptions', 'manualKeys', 'active'], (data) => {
+      const active = data.active;
+      if (!active) { sendResponse({ key: null }); return; }
+      if (active.type === 'sub') {
+        const sub = (data.subscriptions || []).find(s => s.id === active.subId);
+        const key = sub && sub.servers[active.serverIdx] ? sub.servers[active.serverIdx].key : null;
+        sendResponse({ key });
+      } else {
+        const mk = (data.manualKeys || []).find(k => k.id === active.keyId);
+        sendResponse({ key: mk ? mk.key : null });
+      }
+    });
     return true;
   }
 

@@ -11,29 +11,51 @@
   <h1 class="align-center">VLINX Options</h1>
 
   <div class="margin0-0-16 flex global_proxy">
-    <span >Распространять прокси на весь браузер</span>
+    <span>Распространять прокси на весь браузер</span>
     <input type="checkbox" id="globalProxy">
   </div>
 
-  <h2>Domains to use VPN</h2>
+  <h2>Подписки</h2>
+  <table class="flex margin0-0-16">
+    <thead><tr class="flex"><th>Название</th><th>Серверы</th><th></th></tr></thead>
+    <tbody id="subList"></tbody>
+  </table>
+  <div class="flex margin0-0-16" style="gap:4px;flex-wrap:nowrap">
+    <input id="newSubUrl" placeholder="https://.../sub/..." style="flex:3"/>
+    <input id="newSubName" placeholder="Название (опц.)" style="flex:2"/>
+  </div>
+  <div class="flex margin0-0-16">
+    <button id="addSub" class="transition">Добавить подписку</button>
+  </div>
 
+  <h2>Ручные ключи</h2>
+  <table class="flex margin0-0-16">
+    <thead><tr class="flex"><th>Название</th><th>Ключ</th><th></th></tr></thead>
+    <tbody id="manualList"></tbody>
+  </table>
+  <div class="flex margin0-0-16" style="gap:4px;flex-wrap:nowrap">
+    <input id="newManualName" placeholder="Название (опц.)" style="flex:2"/>
+  </div>
+  <div class="margin0-0-16">
+    <textarea id="newManualKey" placeholder="vless://... или JSON конфиг" rows="4" style="width:100%"></textarea>
+  </div>
+  <div class="flex margin0-0-16">
+    <button id="addManual" class="transition">Добавить ключ</button>
+  </div>
+
+  <h2>Домены VPN</h2>
   <table class="flex margin0-0-16">
     <thead>
       <tr class="flex">
-        <th>Партерн</th>
+        <th>Паттерн</th>
         <th>Связанные домены</th>
       </tr>
     </thead>
-
-    <tbody id="domainList">
-
-    </tbody>
+    <tbody id="domainList"></tbody>
   </table>
-
   <div id="keySection" class="margin0-0-16">
     <input id="newDomain" placeholder="e.g., *.example.com" />
   </div>
-
   <div class="flex">
     <button id="addDomain" class="transition">Add Domain Pattern</button>
     <a href="popup.html" id="back" class="transition">Back</a>
