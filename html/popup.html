@@ -17,12 +17,18 @@
 
   <div class="margin0-0-16">
     <h3>Источник:</h3>
-    <select id="sourceSelect" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit;margin-bottom:8px"></select>
+    <div style="display:flex;gap:6px;align-items:center;width:100%;min-width:0">
+      <select id="sourceSelect" style="flex:1;min-width:0;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-family:inherit"></select>
+      <div id="copySource" class="btn-copy btn-" title="Копировать URL подписки или ключ"></div>
+    </div>
   </div>
 
   <div id="serverSelectContainer" class="margin0-0-16 hidden">
     <h3>Сервер:</h3>
-    <select id="serverSelect"></select>
+    <div style="display:flex;gap:6px;align-items:center">
+      <select id="serverSelect" style="flex:1"></select>
+      <div id="copyServer" class="btn-copy btn-" title="Копировать ключ сервера"></div>
+    </div>
     <p id="subscriptionInfo" class="sub-info"></p>
   </div>
 

@@ -32,14 +32,13 @@ document.addEventListener('DOMContentLoaded', () => {
         nameTd.className = 'domain-btn button';
         nameTd.textContent = sub.name || sub.url;
 
+        const nameButtons = document.createElement('div');
+        nameButtons.className = 'buttons-window';
+
         const infoTd = document.createElement('td');
         infoTd.className = 'nowrap';
         infoTd.textContent = `${sub.servers ? sub.servers.length : 0} серверов` +
           (sub.updatedAt ? ` • ${new Date(sub.updatedAt).toLocaleString()}` : '');
-
-        const btnsTd = document.createElement('td');
-        btnsTd.style.display = 'flex';
-        btnsTd.style.gap = '4px';
 
         const refreshBtn = document.createElement('div');
         refreshBtn.className = 'btn-refresh btn-';
@@ -72,12 +71,12 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
 
-        btnsTd.appendChild(refreshBtn);
-        btnsTd.appendChild(removeBtn);
+        nameButtons.appendChild(refreshBtn);
+        nameButtons.appendChild(removeBtn);
+        nameTd.appendChild(nameButtons);
 
         tr.appendChild(nameTd);
         tr.appendChild(infoTd);
-        tr.appendChild(btnsTd);
         subListEl.appendChild(tr);
       });
     });
@@ -114,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // ─── Ручные ключи ────────────────────────────────────────────
+  // ─── Мои ключи ────────────────────────────────────────────
 
   function loadManualKeys() {
     chrome.storage.local.get(['manualKeys'], (data) => {
@@ -128,13 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
         nameTd.className = 'domain-btn button';
         nameTd.textContent = mk.name || mk.key.slice(0, 30) + '…';
 
-        const keyTd = document.createElement('td');
-        keyTd.className = 'nowrap';
-        keyTd.textContent = mk.key;
-
-        const btnsTd = document.createElement('td');
-        btnsTd.style.display = 'flex';
-        btnsTd.style.gap = '4px';
+        const nameButtons = document.createElement('div');
+        nameButtons.className = 'buttons-window';
 
         const copyBtn = document.createElement('div');
         copyBtn.className = 'btn-copy btn-';
@@ -151,12 +145,16 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
 
-        btnsTd.appendChild(copyBtn);
-        btnsTd.appendChild(removeBtn);
+        nameButtons.appendChild(copyBtn);
+        nameButtons.appendChild(removeBtn);
+        nameTd.appendChild(nameButtons);
+
+        const keyTd = document.createElement('td');
+        keyTd.className = 'nowrap';
+        keyTd.textContent = mk.key;
 
         tr.appendChild(nameTd);
         tr.appendChild(keyTd);
-        tr.appendChild(btnsTd);
         manualListEl.appendChild(tr);
       });
     });

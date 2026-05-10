@@ -70,7 +70,7 @@ button, a{
   margin: 0 0 16px;
 }
 
-#connect, #addDomain {
+#connect, #addDomain, #addSub, #addManual {
   background-color: var(--blue);
 }
 
@@ -212,6 +212,13 @@ button, a{
   background-color: var(--green);
 }
 
+.buttons-window .btn-refresh{
+  background-color: var(--gray);
+  border-radius: 0;
+  min-height: unset;
+  min-width: unset;
+}
+
 .btn-refresh {
   background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="%23fff" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>') no-repeat center var(--gray);
   border-radius: 6px;
@@ -220,7 +227,7 @@ button, a{
   min-width: 28px;
 }
 
-#connect:hover, #addDomain:hover,
+#connect:hover, #addDomain:hover, #addSub:hover, #addManual:hover,
 #copyKey:hover,
 #disconnect:hover, #removeDomain:hover, .bg-red:hover,
 #reset:hover,
@@ -252,6 +259,25 @@ button, a{
   transform: translateY(-50%); 
 }
 
+/* кнопки в таблицах подписок и ручных ключей */
+#subList .btn-, #manualList .btn- {
+  background-size: auto 65%;
+  min-height: 28px;
+  min-width: 28px;
+}
+
+#subList .btn-recycl, #manualList .btn-recycl {
+  background-color: var(--red);
+}
+
+#subList .btn-copy, #manualList .btn-copy {
+  background-color: var(--blue);
+}
+
+#subList .btn-refresh {
+  background-color: var(--gray);
+}
+
 #domainSection {
     align-items: center;
     justify-content: flex-start;
@@ -279,6 +305,19 @@ button, a{
 }
 #copyKey{
   background-color: var(--gray);
+}
+
+#copySource, #copyServer {
+  background-color: var(--gray);
+  border-radius: 6px;
+  background-size: auto 65%;
+  min-height: 34px;
+  min-width: 34px;
+  flex-shrink: 0;
+}
+
+#copySource {
+  overflow: hidden;
 }
 
 .line{

@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const serverSelect = document.getElementById('serverSelect');
   const serverSelectContainer = document.getElementById('serverSelectContainer');
   const subscriptionInfo = document.getElementById('subscriptionInfo');
+  const copySourceBtn = document.getElementById('copySource');
+  const copyServerBtn = document.getElementById('copyServer');
 
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   const currentTab = tabs[0];
@@ -72,9 +74,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   sourceSelect.addEventListener('change', () => {
-    const val = sourceSelect.value; // 'sub:id' или 'manual:id'
+    const val = sourceSelect.value;
     renderServerSelect(val, subscriptions, manualKeys);
     if (isConnected) autoReconnect();
+  });
+
+  copySourceBtn.addEventListener('click', () => {
+    const src = sourceSelect.value;
+    if (!src) return;
+    const [type, id] = src.split(':');
+    let text = '';
+    if (type === 'sub') {
+      const sub = subscriptions.find(s => s.id === id);
+      text = sub ? sub.url : '';
+    } else {
+      const mk = manualKeys.find(k => k.id === id);
+      text = mk ? mk.key : '';
+    }
+    if (text) navigator.clipboard.writeText(text);
+  });
+
+  copyServerBtn.addEventListener('click', () => {
+    const key = resolveSelectedKey();
+    if (key) navigator.clipboard.writeText(key);
   });
 
   serverSelect.addEventListener('change', () => {
@@ -246,7 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (manuals.length) {
       const grp = document.createElement('optgroup');
-      grp.label = 'Ручные ключи';
+      grp.label = 'Мои ключи';
       manuals.forEach(k => addOpt(`manual:${k.id}`, k.name || k.key.slice(0, 40) + '…', grp));
       sourceSelect.appendChild(grp);
     }
