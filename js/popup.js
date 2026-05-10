@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const serverSelect = document.getElementById('serverSelect');
   const serverSelectContainer = document.getElementById('serverSelectContainer');
   const subscriptionInfo = document.getElementById('subscriptionInfo');
+  const pingBtn = document.getElementById('pingBtn');
   const copySourceBtn = document.getElementById('copySource');
   const copyServerBtn = document.getElementById('copyServer');
 
@@ -72,6 +73,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     updateUI(isConnected);
   }
+
+  pingBtn.addEventListener('click', async () => {
+    const target = pingBtn._pingTarget;
+    if (!target) return;
+    pingBtn.disabled = true;
+    pingBtn.textContent = '…';
+
+    if (target.sub) {
+      await pingAllServers(target.sub, target.id);
+    } else {
+      target.opt.textContent = target.name; // сброс перед пингом
+      const ms = await pingHost(target.host, target.port);
+      target.opt.textContent = target.name + (ms !== null ? `  [${ms} ms]` : '  [timeout]');
+      // Сохраняем для ручного ключа
+      const pingCache = await chrome.storage.local.get('pingCache').then(d => d.pingCache || {});
+      pingCache[target.manualId] = { 0: ms };
+      chrome.storage.local.set({ pingCache });
+    }
+
+    pingBtn.disabled = false;
+    pingBtn.textContent = 'Ping';
+  });
 
   sourceSelect.addEventListener('change', () => {
     const val = sourceSelect.value;
@@ -212,6 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         isConnected: false,
         vlessKey: '',
         active: null,
+        pingCache: {},
       }, () => {
         isConnected = false;
         active = null;
@@ -282,6 +306,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderServerSelect(sourceSelect.value, subs, manuals, active);
   }
 
+  function pingHost(host, port) {
+    return new Promise(resolve => {
+      chrome.runtime.sendMessage({ action: 'ping', host, port }, (r) => {
+        if (chrome.runtime.lastError || !r || !r.success) resolve(null);
+        else resolve(r.ms);
+      });
+    });
+  }
+
+  async function pingAllServers(sub, id) {
+    const results = {};
+    // Сбрасываем текст всех опций перед новым пингом
+    sub.servers.forEach((s, i) => {
+      const opt = serverSelect.options[i];
+      if (opt) opt.textContent = s.name || s.host || `Server ${i + 1}`;
+    });
+    await Promise.all(sub.servers.map(async (s, i) => {
+      if (!s.host) return;
+      let port = 443;
+      try {
+        port = parseInt(new URL(s.key).port) || 443;
+      } catch(_) {}
+
+      const ms = await pingHost(s.host, port);
+      results[i] = ms;
+      const opt = serverSelect.options[i];
+      if (!opt) return;
+      const baseName = s.name || s.host || `Server ${i + 1}`;
+      opt.textContent = baseName + (ms !== null ? `  [${ms} ms]` : '  [timeout]');
+    }));
+    const pingCache = await chrome.storage.local.get('pingCache').then(d => d.pingCache || {});
+    pingCache[id] = results;
+    chrome.storage.local.set({ pingCache });
+  }
+
+  function applyPingCache(sub, id) {
+    chrome.storage.local.get('pingCache', (data) => {
+      const cache = (data.pingCache || {})[id];
+      if (!cache) return;
+      sub.servers.forEach((s, i) => {
+        const opt = serverSelect.options[i];
+        if (!opt || !(i in cache)) return;
+        const ms = cache[i];
+        const baseName = s.name || s.host || `Server ${i + 1}`;
+        opt.textContent = baseName + (ms !== null ? `  [${ms} ms]` : '  [timeout]');
+      });
+    });
+  }
+
   function renderServerSelect(srcValue, subs, manuals, active) {
     if (!srcValue) { serverSelectContainer.classList.add('hidden'); return; }
     const [type, id] = srcValue.split(':');
@@ -301,6 +374,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (active && active.type === 'sub' && active.subId === id && active.serverIdx === i) opt.selected = true;
         serverSelect.appendChild(opt);
       });
+      applyPingCache(sub, id);
+      pingBtn.classList.remove('hidden');
+      pingBtn._pingTarget = { sub, id };
       const u = sub.info && sub.info.userinfo ? sub.info.userinfo : {};
       const used = (u.upload || 0) + (u.download || 0);
       const parts = [];
@@ -311,6 +387,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       serverSelectContainer.classList.add('hidden');
       subscriptionInfo.textContent = '';
+      pingBtn.classList.add('hidden');
+      pingBtn._pingTarget = null;
+      // Пинг для ручного ключа
+      const mk = manuals.find(k => k.id === id);
+      if (mk && mk.key.startsWith('vless://')) {
+        try {
+          const parsed = new URL(mk.key);
+          const host = parsed.hostname;
+          const port = parseInt(parsed.port) || 443;
+          if (host) {
+            serverSelectContainer.classList.remove('hidden');
+            serverSelect.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = 0;
+            opt.textContent = mk.name || host;
+            serverSelect.appendChild(opt);
+            pingBtn.classList.remove('hidden');
+            // Восстанавливаем кэш для ручного ключа
+            chrome.storage.local.get('pingCache', (data) => {
+              const cache = (data.pingCache || {})[id];
+              if (cache && 0 in cache) {
+                const ms = cache[0];
+                opt.textContent = (mk.name || host) + (ms !== null ? `  [${ms} ms]` : '  [timeout]');
+              }
+            });
+            pingBtn._pingTarget = { host, port, opt, name: mk.name || host, manualId: id };
+          }
+        } catch(_) {}
+      }
     }
   }
 

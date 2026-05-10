@@ -170,6 +170,22 @@ button, a{
   word-break: break-word;
 }
 
+.ping-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.7rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  vertical-align: middle;
+  font-weight: 600;
+  min-width: 36px;
+  text-align: center;
+}
+.ping-ok   { background: #d1fae5; color: #065f46; }
+.ping-mid  { background: #fef3c7; color: #92400e; }
+.ping-bad  { background: #fee2e2; color: #991b1b; }
+.ping-wait { background: #e5e7eb; color: #6b7280; }
+
 .domain-btn{
   min-width: 70px;
   text-align: center;

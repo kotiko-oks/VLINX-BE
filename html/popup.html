@@ -24,7 +24,10 @@
   </div>
 
   <div id="serverSelectContainer" class="margin0-0-16 hidden">
-    <h3>Сервер:</h3>
+    <div style="display:flex;align-items:center;margin-bottom:6px">
+      <h3 style="margin:0">Сервер:</h3>
+      <button id="pingBtn" class="hidden" style="margin-left:auto;padding:4px 10px;font-size:0.8rem;background:#6b7280">Ping</button>
+    </div>
     <div style="display:flex;gap:6px;align-items:center">
       <select id="serverSelect" style="flex:1"></select>
       <div id="copyServer" class="btn-copy btn-" title="Копировать ключ сервера"></div>

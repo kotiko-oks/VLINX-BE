@@ -278,6 +278,17 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === 'ping') {
+    chrome.runtime.sendNativeMessage(NATIVE_HOST, { ping: true, host: request.host, port: request.port }, (response) => {
+      if (chrome.runtime.lastError) {
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        return;
+      }
+      sendResponse(response || { success: false, error: 'No response' });
+    });
+    return true;
+  }
+
   if (request.action === 'getActiveKey') {
     chrome.storage.local.get(['subscriptions', 'manualKeys', 'active'], (data) => {
       const active = data.active;

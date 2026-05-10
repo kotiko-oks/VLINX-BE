@@ -242,6 +242,20 @@ def main():
             send_message({"running": is_running})
             return
 
+        if 'ping' in message:
+            import socket, time
+            host = message.get('host', '')
+            port = int(message.get('port', 443))
+            try:
+                t0 = time.monotonic()
+                with socket.create_connection((host, port), timeout=5):
+                    pass
+                ms = round((time.monotonic() - t0) * 1000)
+                send_message({"success": True, "ms": ms})
+            except Exception as e:
+                send_message({"success": False, "error": str(e)})
+            return
+
         if 'subscription' in message:
             sub_url = message.get('subscription', '').strip()
             if not sub_url:
