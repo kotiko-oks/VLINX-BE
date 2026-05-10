@@ -15,14 +15,20 @@
       <div id="removeDomain" class="btn-recycl transition hidden btn-"></div>
   </div>
 
+  <div id="serverSelectContainer" class="margin0-0-16 hidden">
+    <h3 class="flex"><span>Сервер:</span><div id="refreshSub" class="btn-refresh btn-" title="Обновить подписку"></div></h3>
+    <select id="serverSelect"></select>
+    <p id="subscriptionInfo" class="sub-info"></p>
+  </div>
+
   <div id="keySection" class="margin0-0-16">
     <div id="keyDisplayContainer">
       <h3 class="flex"><span>Current key:</span><div id="copyKey" class="btn-copy btn-"></div></h3>
       <div id="keyValue"></div>
     </div>
     <div id="vlessKeyContainer">
-      <h3>Enter key:</h3>
-      <textarea id="vlessKey" placeholder="Paste your VLESS key or JSON config here" rows="12"></textarea>
+      <h3>Enter key, JSON or subscription URL:</h3>
+      <textarea id="vlessKey" placeholder="vless://... | {json} | https://.../sub/..." rows="10"></textarea>
     </div>
   </div>
 

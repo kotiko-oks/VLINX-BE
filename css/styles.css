@@ -145,6 +145,31 @@ button, a{
   background: url('data:image/svg+xml;utf8,  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="%23fff" stroke-width="2" viewBox="0 0 24 24">    <path d="M10 13a5 5 0 010-7l1-1a5 5 0 017 7l-1 1"/>    <path d="M14 11a5 5 0 010 7l-1 1a5 5 0 01-7-7l1-1"/>  </svg>') no-repeat center;
 }
 
+.btn-refresh {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="%23fff" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>') no-repeat center var(--gray);
+  border-radius: 6px;
+  background-size: auto 65%;
+  min-height: 28px;
+  min-width: 28px;
+}
+
+#serverSelectContainer select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #1f2937;
+  font-family: inherit;
+}
+
+.sub-info {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+  word-break: break-word;
+}
+
 .domain-btn{
   min-width: 70px;
   text-align: center;

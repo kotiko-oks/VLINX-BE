@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentDomainElement = document.getElementById('currentDomain');
   const statusElement = document.getElementById('status');
   const copyKeyElement = document.getElementById('copyKey');
+  const serverSelectContainer = document.getElementById('serverSelectContainer');
+  const serverSelect = document.getElementById('serverSelect');
+  const subscriptionInfo = document.getElementById('subscriptionInfo');
+  const refreshSubButton = document.getElementById('refreshSub');
 
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   const currentTab = tabs[0];
@@ -18,11 +22,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentDomain = new URL(currentUrl).hostname;
   currentDomainElement.value = currentDomain;
 
-  const data = await chrome.storage.local.get(['vlessKey', 'domainMap', 'isConnected', 'startupError']);
+  const data = await chrome.storage.local.get([
+    'vlessKey', 'domainMap', 'isConnected', 'startupError',
+    'subscriptionUrl', 'subscriptionServers', 'selectedServerIndex', 'subscriptionInfo', 'subscriptionUpdatedAt'
+  ]);
   const storedKey = data.vlessKey || '';
   const domainMap = data.domainMap || {};
   let isConnected = data.isConnected || false;
   const startupError = data.startupError || null;
+  let subscriptionServers = data.subscriptionServers || [];
+  let selectedServerIndex = data.selectedServerIndex || 0;
+
+  renderSubscription(subscriptionServers, selectedServerIndex, data.subscriptionInfo, data.subscriptionUpdatedAt);
 
   if (startupError) {
     chrome.storage.local.set({ startupError: null });
@@ -90,11 +101,44 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   connectButton.addEventListener('click', async () => {
-    const vlessKey = vlessKeyInput.value.trim();
-    if (!vlessKey) {
-      updateStatus('Пожалуйста, введите ключ VLESS');
+    const input = vlessKeyInput.value.trim();
+    if (!input) {
+      updateStatus('Пожалуйста, введите ключ, JSON или URL подписки');
       return;
     }
+
+    // Если это URL подписки — сначала забираем список серверов
+    if (/^https?:\/\//i.test(input)) {
+      updateStatus('Загрузка подписки...');
+      const subResp = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action: 'fetchSubscription', subscriptionUrl: input }, resolve);
+      });
+      if (!subResp || !subResp.success) {
+        updateStatus('Ошибка подписки: ' + (subResp ? subResp.error : 'нет ответа'));
+        return;
+      }
+      const servers = subResp.servers;
+      const firstKey = servers[0].key;
+      await chrome.storage.local.set({
+        subscriptionUrl: input,
+        subscriptionServers: servers,
+        subscriptionInfo: subResp.info,
+        subscriptionUpdatedAt: Date.now(),
+        selectedServerIndex: 0,
+        vlessKey: firstKey
+      });
+      subscriptionServers = servers;
+      selectedServerIndex = 0;
+      renderSubscription(servers, 0, subResp.info, Date.now());
+      connectWithKey(firstKey);
+      return;
+    }
+
+    connectWithKey(input);
+  });
+
+  function connectWithKey(vlessKey) {
+    updateStatus('Подключение...');
     chrome.runtime.sendMessage({ action: 'connect', vlessKey }, (response) => {
       if (response && response.status) {
         updateStatus(response.status);
@@ -106,6 +150,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateStatus('Ошибка соединения');
       }
     });
+  }
+
+  serverSelect.addEventListener('change', async () => {
+    const idx = parseInt(serverSelect.value, 10);
+    if (isNaN(idx) || !subscriptionServers[idx]) return;
+    selectedServerIndex = idx;
+    const newKey = subscriptionServers[idx].key;
+    await chrome.storage.local.set({ selectedServerIndex: idx, vlessKey: newKey });
+    if (isConnected) {
+      updateStatus('Переключение сервера...');
+      connectWithKey(newKey);
+    } else {
+      updateStatus(`Выбран сервер: ${subscriptionServers[idx].name}`);
+    }
+  });
+
+  refreshSubButton.addEventListener('click', async () => {
+    const sd = await chrome.storage.local.get('subscriptionUrl');
+    if (!sd.subscriptionUrl) {
+      updateStatus('Нет сохранённой подписки');
+      return;
+    }
+    updateStatus('Обновление подписки...');
+    const subResp = await new Promise((resolve) => {
+      chrome.runtime.sendMessage({ action: 'fetchSubscription', subscriptionUrl: sd.subscriptionUrl }, resolve);
+    });
+    if (!subResp || !subResp.success) {
+      updateStatus('Ошибка обновления: ' + (subResp ? subResp.error : 'нет ответа'));
+      return;
+    }
+    const idx = Math.min(selectedServerIndex, subResp.servers.length - 1);
+    await chrome.storage.local.set({
+      subscriptionServers: subResp.servers,
+      subscriptionInfo: subResp.info,
+      subscriptionUpdatedAt: Date.now(),
+      selectedServerIndex: idx,
+      vlessKey: subResp.servers[idx].key
+    });
+    subscriptionServers = subResp.servers;
+    selectedServerIndex = idx;
+    renderSubscription(subResp.servers, idx, subResp.info, Date.now());
+    updateStatus(`Подписка обновлена: ${subResp.servers.length} серверов`);
+    if (isConnected) connectWithKey(subResp.servers[idx].key);
   });
 
   disconnectButton.addEventListener('click', () => {
@@ -124,9 +211,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   resetButton.addEventListener('click', () => {
     chrome.runtime.sendMessage({ action: 'disconnect' }, (response) => {
-      chrome.storage.local.set({ isConnected: false, vlessKey: '', domainMap: {}, noAutoRelated: {} }, () => {
+      chrome.storage.local.set({
+        isConnected: false,
+        vlessKey: '',
+        domainMap: {},
+        noAutoRelated: {},
+        subscriptionUrl: '',
+        subscriptionServers: [],
+        subscriptionInfo: null,
+        subscriptionUpdatedAt: 0,
+        selectedServerIndex: 0
+      }, () => {
         vlessKeyInput.value = '';
-        updateUI(false, storedKey);
+        subscriptionServers = [];
+        selectedServerIndex = 0;
+        renderSubscription([], 0, null, 0);
+        updateUI(false, '');
         updateStatus('Сброс завершен');
       });
     });
@@ -150,6 +250,43 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateStatus(message) {
     statusElement.textContent = message;
+  }
+
+  function formatBytes(n) {
+    if (!n || isNaN(n)) return '—';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0;
+    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+    return n.toFixed(2) + ' ' + units[i];
+  }
+
+  function formatExpire(ts) {
+    if (!ts || isNaN(ts)) return '—';
+    return new Date(ts * 1000).toLocaleDateString();
+  }
+
+  function renderSubscription(servers, idx, info, updatedAt) {
+    if (!servers || servers.length === 0) {
+      serverSelectContainer.classList.add('hidden');
+      subscriptionInfo.textContent = '';
+      return;
+    }
+    serverSelectContainer.classList.remove('hidden');
+    serverSelect.innerHTML = '';
+    servers.forEach((s, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = s.name || s.host || `Server ${i + 1}`;
+      if (i === idx) opt.selected = true;
+      serverSelect.appendChild(opt);
+    });
+    const u = info && info.userinfo ? info.userinfo : {};
+    const used = (u.upload || 0) + (u.download || 0);
+    const parts = [];
+    if (u.total) parts.push(`Трафик: ${formatBytes(used)} / ${formatBytes(u.total)}`);
+    if (u.expire) parts.push(`До: ${formatExpire(u.expire)}`);
+    if (updatedAt) parts.push(`Обновлено: ${new Date(updatedAt).toLocaleString()}`);
+    subscriptionInfo.textContent = parts.join(' • ');
   }
 
   async function checkProxyStatus() {

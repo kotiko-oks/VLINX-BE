@@ -206,8 +206,57 @@ function checkXrayStatus() {
   });
 }
 
+function fetchSubscription(subUrl) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendNativeMessage(NATIVE_HOST, { subscription: subUrl }, (response) => {
+      if (chrome.runtime.lastError) {
+        resolve({ success: false, error: chrome.runtime.lastError.message });
+        return;
+      }
+      resolve(response || { success: false, error: 'No response' });
+    });
+  });
+}
+
+async function refreshSubscription() {
+  const data = await chrome.storage.local.get(['subscriptionUrl', 'selectedServerIndex', 'isConnected']);
+  if (!data.subscriptionUrl) return;
+  console.log('Refreshing subscription...');
+  const resp = await fetchSubscription(data.subscriptionUrl);
+  if (!resp.success) {
+    console.error('Subscription refresh failed:', resp.error);
+    return;
+  }
+  const idx = Math.min(data.selectedServerIndex || 0, resp.servers.length - 1);
+  await chrome.storage.local.set({
+    subscriptionServers: resp.servers,
+    subscriptionInfo: resp.info,
+    subscriptionUpdatedAt: Date.now(),
+    selectedServerIndex: idx,
+    vlessKey: resp.servers[idx].key
+  });
+  if (data.isConnected) {
+    chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey: resp.servers[idx].key }, (r) => {
+      if (r && r.success) {
+        applyProxySettings(r.port || 1080);
+        chrome.storage.local.set({ proxyPort: r.port || 1080 });
+      }
+    });
+  }
+}
+
+chrome.alarms.create('refreshSubscription', { periodInMinutes: 60 * 24 });
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'refreshSubscription') refreshSubscription();
+});
+
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   console.log('Received message:', JSON.stringify(request));
+
+  if (request.action === 'fetchSubscription') {
+    fetchSubscription(request.subscriptionUrl).then(sendResponse);
+    return true;
+  }
 
   if (request.action === 'connect') {
     chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey: request.vlessKey }, (response) => {
@@ -271,6 +320,7 @@ function shExpMatch(str, pattern) {
 
 chrome.runtime.onStartup.addListener(startupConnect);
 
-checkXrayStatus();
+// Даём startupConnect время отработать перед первой проверкой
+setTimeout(checkXrayStatus, 10 * 1000);
 setInterval(checkXrayStatus, 30 * 1000);
 trackRequests();
