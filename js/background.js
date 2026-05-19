@@ -219,14 +219,27 @@ function checkXrayStatus() {
   });
 }
 
+function getDeviceId() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('deviceId', data => {
+      if (data.deviceId) { resolve(data.deviceId); return; }
+      const id = crypto.randomUUID();
+      chrome.storage.local.set({ deviceId: id });
+      resolve(id);
+    });
+  });
+}
+
 function fetchSubscription(subUrl) {
   return new Promise((resolve) => {
-    chrome.runtime.sendNativeMessage(NATIVE_HOST, { subscription: subUrl }, (response) => {
-      if (chrome.runtime.lastError) {
-        resolve({ success: false, error: chrome.runtime.lastError.message });
-        return;
-      }
-      resolve(response || { success: false, error: 'No response' });
+    getDeviceId().then(deviceId => {
+      chrome.runtime.sendNativeMessage(NATIVE_HOST, { subscription: subUrl, deviceId }, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve({ success: false, error: chrome.runtime.lastError.message });
+          return;
+        }
+        resolve(response || { success: false, error: 'No response' });
+      });
     });
   });
 }

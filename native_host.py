@@ -10,9 +10,29 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 LOG_FILE = '/tmp/native_host.log'
 CONFIG_FILE = '/tmp/xray_config.json'
+HWID_FILE = os.path.expanduser('~/.config/vlinx/hwid')
 
 SUB_USER_AGENT = 'v2rayN/6.42'
 SUB_TIMEOUT = 15
+
+def get_or_create_hwid():
+    try:
+        os.makedirs(os.path.dirname(HWID_FILE), exist_ok=True)
+        if os.path.exists(HWID_FILE):
+            with open(HWID_FILE) as f:
+                hwid = f.read().strip()
+                if len(hwid) == 32:
+                    return hwid
+        import hashlib, uuid as _uuid
+        hwid = hashlib.md5(_uuid.uuid4().bytes).hexdigest()
+        with open(HWID_FILE, 'w') as f:
+            f.write(hwid)
+        log(f'Generated new HWID: {hwid}')
+        return hwid
+    except Exception as e:
+        log(f'get_or_create_hwid error: {e}')
+        import hashlib, uuid as _uuid
+        return hashlib.md5(_uuid.uuid4().bytes).hexdigest()
 
 def log(message):
     try:
@@ -42,17 +62,33 @@ def send_message(message):
     sys.stdout.buffer.write(encoded_message)
     sys.stdout.buffer.flush()
 
-def fetch_subscription(sub_url):
-    log('Fetching subscription: ' + sub_url)
-    req = urllib.request.Request(sub_url, headers={'User-Agent': SUB_USER_AGENT})
+def fetch_subscription(sub_url, device_id=None):
+    import socket, platform as _platform
+    hwid = device_id or get_or_create_hwid()
+    hostname = socket.gethostname()
+    machine = _platform.machine()
+    headers = {
+        'User-Agent':        'Happ/2.14.0/Linux/2605071234511',
+        'X-App-Version':     '2.14.0',
+        'X-Device-Locale':   'RU',
+        'X-Device-Os':       'Linux',
+        'X-Device-Model':    f'{hostname}_{machine}',
+        'X-Hwid':            hwid,
+        'X-Ver-Os':          'linux_unknown',
+        'Accept-Language':   'ru-RU,en,*',
+    }
+    log(f'Fetching subscription: {sub_url} hwid={hwid}')
+    req = urllib.request.Request(sub_url, headers=headers)
     with urllib.request.urlopen(req, timeout=SUB_TIMEOUT) as resp:
         raw = resp.read()
-        headers = {k.lower(): v for k, v in resp.headers.items()}
-    return raw, headers
+        resp_headers = {k.lower(): v for k, v in resp.headers.items()}
+    return raw, resp_headers
 
 def decode_subscription_body(raw_bytes):
     text = raw_bytes.decode('utf-8', errors='replace').strip()
-    # Если уже plain text со ссылками vless:// — оставляем как есть
+    # JSON или plain text с vless:// — возвращаем как есть
+    if text.startswith('[') or text.startswith('{'):
+        return text
     if 'vless://' in text or 'vmess://' in text or 'trojan://' in text or 'ss://' in text:
         return text
     # Иначе пробуем base64 (с паддингом и без)
@@ -80,17 +116,45 @@ def parse_sub_userinfo(value):
     return info
 
 def parse_servers_from_text(text):
+    text = text.strip()
+
+    # JSON-массив Xray-конфигов (формат happ/RemnaWave)
+    if text.startswith('[') or text.startswith('{'):
+        try:
+            data = json.loads(text)
+            if isinstance(data, dict):
+                data = [data]
+            servers = []
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+                name = item.get('remarks', '') or item.get('id', 'Server')
+                # host берём из первого outbound для пинга
+                host = ''
+                try:
+                    host = item['outbounds'][0]['settings']['vnext'][0]['address']
+                except Exception:
+                    pass
+                servers.append({'key': json.dumps(item, ensure_ascii=False), 'name': name, 'host': host})
+            log(f'Parsed {len(servers)} servers from JSON array')
+            return servers
+        except Exception as e:
+            log(f'JSON parse failed: {e}, falling back to text parser')
+
+    # Обычный текст с vless:// строками
     servers = []
     for line in text.splitlines():
         line = line.strip()
         if not line or not line.startswith('vless://'):
             continue
-        # Имя берём из #fragment
+        parsed = urlparse(line)
+        host = parsed.hostname or ''
+        if host in ('0.0.0.0', '127.0.0.1', ''):
+            log(f'Skipping placeholder server: {line[:80]}')
+            continue
         name = ''
         if '#' in line:
             name = unquote(line.split('#', 1)[1])
-        parsed = urlparse(line)
-        host = parsed.hostname or ''
         if not name:
             name = host
         servers.append({'key': line, 'name': name, 'host': host})
@@ -258,20 +322,24 @@ def main():
 
         if 'subscription' in message:
             sub_url = message.get('subscription', '').strip()
+            device_id = message.get('deviceId', None)
             if not sub_url:
                 send_message({"success": False, "error": "Empty subscription URL"})
                 return
             try:
-                raw, headers = fetch_subscription(sub_url)
+                raw, resp_headers = fetch_subscription(sub_url, device_id)
                 text = decode_subscription_body(raw)
                 servers = parse_servers_from_text(text)
                 if not servers:
-                    send_message({"success": False, "error": "No VLESS keys found in subscription"})
+                    if resp_headers.get('x-hwid-limit') == 'true':
+                        send_message({"success": False, "error": "Сервер вернул заглушку: лимит устройств исчерпан. Удалите одно из устройств в личном кабинете подписки."})
+                    else:
+                        send_message({"success": False, "error": "No VLESS keys found in subscription"})
                     return
                 info = {
-                    'userinfo': parse_sub_userinfo(headers.get('subscription-userinfo', '')),
-                    'updateInterval': headers.get('profile-update-interval'),
-                    'title': headers.get('profile-title', ''),
+                    'userinfo': parse_sub_userinfo(resp_headers.get('subscription-userinfo', '')),
+                    'updateInterval': resp_headers.get('profile-update-interval'),
+                    'title': resp_headers.get('profile-title', ''),
                 }
                 log(f'Subscription parsed: {len(servers)} servers')
                 send_message({
