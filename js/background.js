@@ -60,22 +60,25 @@ function startupConnect() {
       return;
     }
 
-    chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey }, (response) => {
-      if (chrome.runtime.lastError) {
-        const err = chrome.runtime.lastError.message;
-        chrome.storage.local.set({ isConnected: false, startupError: err });
-        showErrorOnActiveTab('Не удалось запустить Xray: ' + err);
-        return;
-      }
-      if (response && response.success) {
-        const port = response.port || data.proxyPort || 1080;
-        chrome.storage.local.set({ proxyPort: port, startupError: null });
-        applyProxySettings(port);
-      } else {
-        const err = (response && response.error) || 'Нет ответа от native host';
-        chrome.storage.local.set({ startupError: err });
-        showErrorOnActiveTab('Не удалось запустить Xray: ' + err);
-      }
+    chrome.storage.local.get('obfuscation', (obfData) => {
+      const obfuscation = !!obfData.obfuscation;
+      chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey, obfuscation }, (response) => {
+        if (chrome.runtime.lastError) {
+          const err = chrome.runtime.lastError.message;
+          chrome.storage.local.set({ isConnected: false, startupError: err });
+          showErrorOnActiveTab('Не удалось запустить Xray: ' + err);
+          return;
+        }
+        if (response && response.success) {
+          const port = response.port || data.proxyPort || 1080;
+          chrome.storage.local.set({ proxyPort: port, startupError: null });
+          applyProxySettings(port);
+        } else {
+          const err = (response && response.error) || 'Нет ответа от native host';
+          chrome.storage.local.set({ startupError: err });
+          showErrorOnActiveTab('Не удалось запустить Xray: ' + err);
+        }
+      });
     });
   });
 }
@@ -192,10 +195,11 @@ function checkXrayStatus() {
       const proxyPort = data.proxyPort || 1080;
 
       if (isConnected && !isRunning) {
-        chrome.storage.local.get('vlessKey', (keyData) => {
+        chrome.storage.local.get(['vlessKey', 'obfuscation'], (keyData) => {
           const vlessKey = keyData.vlessKey;
+          const obfuscation = !!keyData.obfuscation;
           if (vlessKey) {
-            chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey }, (restartResponse) => {
+            chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey, obfuscation }, (restartResponse) => {
               if (restartResponse && restartResponse.success) {
                 const newPort = restartResponse.port || proxyPort;
                 chrome.storage.local.set({ proxyPort: newPort, startupError: null });
@@ -268,11 +272,14 @@ async function refreshSubscription() {
       const idx = Math.min(active.serverIdx || 0, sub.servers.length - 1);
       const key = sub.servers[idx].key;
       chrome.storage.local.set({ vlessKey: key });
-      chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey: key }, (r) => {
-        if (r && r.success) {
-          applyProxySettings(r.port || 1080);
-          chrome.storage.local.set({ proxyPort: r.port || 1080 });
-        }
+      chrome.storage.local.get('obfuscation', (obfData) => {
+        const obfuscation = !!obfData.obfuscation;
+        chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey: key, obfuscation }, (r) => {
+          if (r && r.success) {
+            applyProxySettings(r.port || 1080);
+            chrome.storage.local.set({ proxyPort: r.port || 1080 });
+          }
+        });
       });
     }
   }
@@ -319,24 +326,27 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   }
 
   if (request.action === 'connect') {
-    chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey: request.vlessKey }, (response) => {
-      console.log('Native response:', response);
+    chrome.storage.local.get('obfuscation', (obfData) => {
+      const obfuscation = !!obfData.obfuscation;
+      chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey: request.vlessKey, obfuscation }, (response) => {
+        console.log('Native response:', response);
 
-      if (chrome.runtime.lastError) {
-        console.error('Native error:', chrome.runtime.lastError.message);
-        sendResponse({ status: 'Error: Native host not found: ' + chrome.runtime.lastError.message });
-        return;
-      }
+        if (chrome.runtime.lastError) {
+          console.error('Native error:', chrome.runtime.lastError.message);
+          sendResponse({ status: 'Error: Native host not found: ' + chrome.runtime.lastError.message });
+          return;
+        }
 
-      if (response && response.success) {
-        const proxyPort = response.port || 1080;
-        applyProxySettings(proxyPort);
-        chrome.storage.local.set({ isConnected: true, proxyPort });
-        sendResponse({ status: 'Connected' });
-      } else {
-        console.error('Native response error:', response ? response.error : 'No response');
-        sendResponse({ status: 'Error: ' + (response ? response.error : 'No response from native host') });
-      }
+        if (response && response.success) {
+          const proxyPort = response.port || 1080;
+          applyProxySettings(proxyPort);
+          chrome.storage.local.set({ isConnected: true, proxyPort });
+          sendResponse({ status: 'Connected' });
+        } else {
+          console.error('Native response error:', response ? response.error : 'No response');
+          sendResponse({ status: 'Error: ' + (response ? response.error : 'No response from native host') });
+        }
+      });
     });
   } else if (request.action === 'disconnect') {
     console.log('Sending stop to native');

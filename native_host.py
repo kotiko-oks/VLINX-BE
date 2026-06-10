@@ -289,6 +289,54 @@ def build_config_from_json(raw_json):
     socks_port = find_local_socks_port(xray_config)
     return xray_config, socks_port
 
+def apply_obfuscation(xray_config):
+    """
+    Добавляет фрагментирование TLS Hello и мультиплексирование.
+    Мультиплексирование применяется только к аутбаундам БЕЗ xtls-rprx-vision —
+    этот flow несовместим с mux в Xray.
+    Пресет: fragment tlshello 50-100 / 10-20 ms + mux (TCP×8, XUDP×8, reject QUIC)
+    """
+    for outbound in xray_config.get('outbounds', []):
+        protocol = outbound.get('protocol', '')
+        if protocol not in ('vless', 'vmess', 'trojan'):
+            continue
+
+        # Проверяем, есть ли xtls-rprx-vision у любого пользователя
+        has_xtls_flow = False
+        try:
+            for peer in outbound['settings'].get('vnext', []):
+                for user in peer.get('users', []):
+                    if 'xtls' in user.get('flow', ''):
+                        has_xtls_flow = True
+                        break
+        except Exception:
+            pass
+
+        # Фрагментирование совместимо с xtls-rprx-vision
+        stream = outbound.setdefault('streamSettings', {})
+        sockopt = stream.setdefault('sockopt', {})
+        sockopt['fragment'] = {
+            'packets': 'tlshello',
+            'length': '50-100',
+            'interval': '10-20',
+        }
+
+        # Мультиплексирование несовместимо с xtls-rprx-vision — пропускаем
+        if has_xtls_flow:
+            log(f'Obfuscation: skipping mux for outbound "{outbound.get("tag","")}" (xtls-rprx-vision)')
+            continue
+
+        outbound['mux'] = {
+            'enabled': True,
+            'concurrency': 8,
+            'xudpConcurrency': 8,
+            'xudpProxyUDP443': 'reject',
+        }
+
+    log('Obfuscation applied (fragment tlshello; mux only where compatible)')
+    return xray_config
+
+
 def main():
     log('Native host started')
     input_data = read_message()
@@ -374,6 +422,9 @@ def main():
         else:
             log('Detected VLESS URL')
             xray_config, socks_port = build_config_from_vless(raw_value)
+
+        if message.get('obfuscation'):
+            xray_config = apply_obfuscation(xray_config)
 
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(xray_config, f, ensure_ascii=False, indent=2)

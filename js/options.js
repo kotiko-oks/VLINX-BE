@@ -260,14 +260,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const obfuscationCheckbox = document.getElementById('obfuscation');
+
   function loadGlobalProxy() {
-    chrome.storage.local.get(['globalProxy'], (data) => {
+    chrome.storage.local.get(['globalProxy', 'obfuscation'], (data) => {
       globalProxyCheckbox.checked = !!data.globalProxy;
+      obfuscationCheckbox.checked = !!data.obfuscation;
     });
   }
 
   globalProxyCheckbox.addEventListener('change', () => {
     chrome.storage.local.set({ globalProxy: globalProxyCheckbox.checked });
+  });
+
+  obfuscationCheckbox.addEventListener('change', () => {
+    chrome.storage.local.set({ obfuscation: obfuscationCheckbox.checked });
   });
 
   addDomainButton.addEventListener('click', () => {
