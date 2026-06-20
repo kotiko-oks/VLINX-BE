@@ -10,6 +10,12 @@
 <body>
   <h1 class="align-center">VLINX Options</h1>
 
+  <nav class="page-nav">
+    <a href="popup.html" class="nav-item">Главная</a>
+    <a href="options.html" class="nav-item active">Настройки</a>
+    <a href="domains.html" class="nav-item">Домены</a>
+  </nav>
+
   <div class="margin0-0-16 flex global_proxy">
     <span>Распространять прокси на весь браузер</span>
     <input type="checkbox" id="globalProxy">
@@ -46,24 +52,6 @@
   </div>
   <div class="flex margin0-0-16">
     <button id="addManual" class="transition">Добавить ключ</button>
-  </div>
-
-  <h2>Домены VPN</h2>
-  <table class="flex margin0-0-16">
-    <thead>
-      <tr class="flex">
-        <th>Паттерн</th>
-        <th>Связанные домены</th>
-      </tr>
-    </thead>
-    <tbody id="domainList"></tbody>
-  </table>
-  <div id="keySection" class="margin0-0-16">
-    <input id="newDomain" placeholder="e.g., *.example.com" />
-  </div>
-  <div class="flex">
-    <button id="addDomain" class="transition">Add Domain Pattern</button>
-    <a href="popup.html" id="back" class="transition">Back</a>
   </div>
 
   <script src="../js/options.js"></script>

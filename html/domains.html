@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>VLINX — Домены</title>
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+
+<body>
+  <h1 class="align-center">Домены VPN</h1>
+
+  <nav class="page-nav">
+    <a href="popup.html" class="nav-item">Главная</a>
+    <a href="options.html" class="nav-item">Настройки</a>
+    <a href="domains.html" class="nav-item active">Домены</a>
+  </nav>
+
+  <table class="flex margin0-0-16">
+    <thead>
+      <tr class="flex">
+        <th>Паттерн</th>
+        <th>Связанные домены</th>
+      </tr>
+    </thead>
+    <tbody id="domainList"></tbody>
+  </table>
+  <div id="keySection" class="margin0-0-16">
+    <input id="newDomain" placeholder="e.g., *.example.com" />
+  </div>
+  <div class="flex">
+    <button id="addDomain" class="transition">Add Domain Pattern</button>
+  </div>
+
+  <script src="../js/domains.js"></script>
+</body>
+
+</html>

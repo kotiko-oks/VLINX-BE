@@ -104,6 +104,34 @@ button, a{
   display: none !important;
 }
 
+.page-nav {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.page-nav .nav-item {
+  flex: 1;
+  text-align: center;
+  background-color: var(--gray);
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.page-nav .nav-item:hover {
+  filter: brightness(0.9);
+}
+
+.page-nav .nav-item.active {
+  background-color: var(--blue);
+  cursor: default;
+  pointer-events: none;
+}
+
 #keyValue {
   max-width: 100%;
   overflow: hidden;
