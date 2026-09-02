@@ -38,22 +38,30 @@ function showErrorOnActiveTab(errorMessage) {
   });
 }
 
+function logPort(where, port) {
+  console.log(`[VLINX] ${where}: proxyPort = ${port}`);
+}
+
+// Резолвит актуальный ключ по active, с фолбэком на сохранённый vlessKey
+function resolveActiveKey(data) {
+  const active = data.active;
+  if (active) {
+    if (active.type === 'sub') {
+      const sub = (data.subscriptions || []).find(s => s.id === active.subId);
+      if (sub && sub.servers && sub.servers[active.serverIdx]) return sub.servers[active.serverIdx].key;
+    } else if (active.type === 'manual') {
+      const mk = (data.manualKeys || []).find(k => k.id === active.keyId);
+      if (mk) return mk.key;
+    }
+  }
+  return data.vlessKey || null;
+}
+
 function startupConnect() {
   chrome.storage.local.get(['isConnected', 'vlessKey', 'proxyPort', 'subscriptions', 'manualKeys', 'active'], (data) => {
     if (!data.isConnected) return;
 
-    // Резолвим актуальный ключ из active
-    let vlessKey = data.vlessKey;
-    const active = data.active;
-    if (active) {
-      if (active.type === 'sub') {
-        const sub = (data.subscriptions || []).find(s => s.id === active.subId);
-        if (sub && sub.servers[active.serverIdx]) vlessKey = sub.servers[active.serverIdx].key;
-      } else if (active.type === 'manual') {
-        const mk = (data.manualKeys || []).find(k => k.id === active.keyId);
-        if (mk) vlessKey = mk.key;
-      }
-    }
+    const vlessKey = resolveActiveKey(data);
 
     if (!vlessKey) {
       chrome.storage.local.set({ isConnected: false });
@@ -70,9 +78,9 @@ function startupConnect() {
           return;
         }
         if (response && response.success) {
-          const port = response.port || data.proxyPort || 1080;
-          chrome.storage.local.set({ proxyPort: port, startupError: null });
-          applyProxySettings(port);
+          const port = response.port || 1080;
+          logPort('startupConnect', port);
+          chrome.storage.local.set({ proxyPort: port, startupError: null }, () => applyProxySettings(port));
         } else {
           const err = (response && response.error) || 'Нет ответа от native host';
           chrome.storage.local.set({ startupError: err });
@@ -110,6 +118,7 @@ function generatePACScript(domainMap, proxyPort = 1080) {
 }
 
 function applyProxySettings(proxyPort = 1080) {
+  console.log('[VLINX] applyProxySettings called with port =', proxyPort);
   chrome.storage.local.get(['domainMap', 'globalProxy'], (data) => {
     const globalProxy = !!data.globalProxy;
     const domainMap = data.domainMap || {};
@@ -190,20 +199,23 @@ function checkXrayStatus() {
     }
 
     const isRunning = response && response.running;
-    chrome.storage.local.get(['isConnected', 'proxyPort'], (data) => {
-      const isConnected = data.isConnected || false;
-      const proxyPort = data.proxyPort || 1080;
+    const actualPort = response && response.port ? response.port : null;
 
-      if (isConnected && !isRunning) {
-        chrome.storage.local.get(['vlessKey', 'obfuscation'], (keyData) => {
-          const vlessKey = keyData.vlessKey;
-          const obfuscation = !!keyData.obfuscation;
+    chrome.storage.local.get(
+      ['isConnected', 'proxyPort', 'vlessKey', 'obfuscation', 'subscriptions', 'manualKeys', 'active'],
+      (data) => {
+        const isConnected = data.isConnected || false;
+        const proxyPort = data.proxyPort || 1080;
+
+        if (isConnected && !isRunning) {
+          const vlessKey = resolveActiveKey(data);
+          const obfuscation = !!data.obfuscation;
           if (vlessKey) {
             chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey, obfuscation }, (restartResponse) => {
               if (restartResponse && restartResponse.success) {
-                const newPort = restartResponse.port || proxyPort;
-                chrome.storage.local.set({ proxyPort: newPort, startupError: null });
-                applyProxySettings(newPort);
+                const newPort = restartResponse.port || 1080;
+                logPort('checkXrayStatus/restart', newPort);
+                chrome.storage.local.set({ proxyPort: newPort, startupError: null }, () => applyProxySettings(newPort));
                 console.log('Xray restarted successfully');
               } else {
                 const err = restartResponse ? restartResponse.error : 'Нет ответа при перезапуске';
@@ -213,13 +225,16 @@ function checkXrayStatus() {
               }
             });
           }
-        });
-      } else if (!isConnected && isRunning) {
-        chrome.runtime.sendNativeMessage(NATIVE_HOST, { stop: true }, () => {
-          chrome.proxy.settings.clear({ scope: 'regular' });
-        });
+        } else if (!isConnected && isRunning) {
+          chrome.runtime.sendNativeMessage(NATIVE_HOST, { stop: true }, () => {
+            chrome.proxy.settings.clear({ scope: 'regular' });
+          });
+        } else if (isConnected && isRunning && actualPort && actualPort !== proxyPort) {
+          console.warn('[VLINX] Port mismatch: storage =', proxyPort, ', actual =', actualPort);
+          chrome.storage.local.set({ proxyPort: actualPort }, () => applyProxySettings(actualPort));
+        }
       }
-    });
+    );
   });
 }
 
@@ -276,8 +291,9 @@ async function refreshSubscription() {
         const obfuscation = !!obfData.obfuscation;
         chrome.runtime.sendNativeMessage(NATIVE_HOST, { vlessKey: key, obfuscation }, (r) => {
           if (r && r.success) {
-            applyProxySettings(r.port || 1080);
-            chrome.storage.local.set({ proxyPort: r.port || 1080 });
+            const newPort = r.port || 1080;
+            logPort('refreshSubscription', newPort);
+            chrome.storage.local.set({ proxyPort: newPort }, () => applyProxySettings(newPort));
           }
         });
       });
@@ -339,9 +355,11 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
         if (response && response.success) {
           const proxyPort = response.port || 1080;
-          applyProxySettings(proxyPort);
-          chrome.storage.local.set({ isConnected: true, proxyPort });
-          sendResponse({ status: 'Connected' });
+          logPort('connect', proxyPort);
+          chrome.storage.local.set({ isConnected: true, proxyPort }, () => {
+            applyProxySettings(proxyPort);
+            sendResponse({ status: 'Connected' });
+          });
         } else {
           console.error('Native response error:', response ? response.error : 'No response');
           sendResponse({ status: 'Error: ' + (response ? response.error : 'No response from native host') });

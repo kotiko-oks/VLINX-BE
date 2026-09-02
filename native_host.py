@@ -8,9 +8,20 @@ import base64
 import urllib.request
 from urllib.parse import urlparse, parse_qs, unquote
 
+import signal
+import time
+import socket
+
 LOG_FILE = '/tmp/native_host.log'
 CONFIG_FILE = '/tmp/xray_config.json'
 HWID_FILE = os.path.expanduser('~/.config/vlinx/hwid')
+
+# Точный матчинг только наших процессов — не трогаем чужой xray
+XRAY_MATCH = 'xray run -c ' + CONFIG_FILE
+
+# Локальные порты по умолчанию
+SOCKS_PORT = 1080
+HTTP_PORT = 10809
 
 SUB_USER_AGENT = 'v2rayN/6.42'
 SUB_TIMEOUT = 15
@@ -195,6 +206,109 @@ def find_local_socks_port(xray_config):
         log(f'find_local_socks_port error: {e}')
     return 1080
 
+def find_local_http_port(xray_config):
+    try:
+        for inbound in xray_config.get('inbounds', []):
+            if inbound.get('protocol') == 'http':
+                return int(inbound.get('port', HTTP_PORT))
+    except Exception as e:
+        log(f'find_local_http_port error: {e}')
+    return None
+
+def ensure_http_inbound(xray_config, port=HTTP_PORT):
+    """Гарантирует HTTP-прокси для внешних приложений (не только браузера)."""
+    existing = find_local_http_port(xray_config)
+    if existing:
+        log(f'HTTP inbound already present on port {existing}')
+        return existing
+    xray_config.setdefault('inbounds', []).append({
+        "port": port,
+        "protocol": "http",
+        "listen": "127.0.0.1",
+        "settings": {},
+        "tag": "http-in"
+    })
+    log(f'HTTP inbound added on 127.0.0.1:{port}')
+    return port
+
+def read_config_ports():
+    """(socks_port, http_port) из реально записанного на диск конфига."""
+    try:
+        with open(CONFIG_FILE, encoding='utf-8') as f:
+            cfg = json.load(f)
+        return find_local_socks_port(cfg), find_local_http_port(cfg)
+    except Exception:
+        return None, None
+
+def read_config_socks_port():
+    """Порт SOCKS из реально записанного на диск конфига (или None)."""
+    return read_config_ports()[0]
+
+def get_xray_pids():
+    result = subprocess.run(['pgrep', '-f', XRAY_MATCH], capture_output=True, text=True)
+    if result.returncode != 0:
+        return []
+    return [int(p) for p in result.stdout.split() if p.isdigit()]
+
+def stop_xray(timeout=5.0):
+    """SIGTERM -> ждём реальной смерти -> SIGKILL. Без гонок с 0.3 сек."""
+    pids = get_xray_pids()
+    if not pids:
+        return True
+    log(f'Stopping xray, pids={pids}')
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not get_xray_pids():
+            log('Xray stopped (SIGTERM)')
+            return True
+        time.sleep(0.1)
+    left = get_xray_pids()
+    log(f'Xray still alive after SIGTERM: {left}, sending SIGKILL')
+    for pid in left:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    time.sleep(0.3)
+    remaining = get_xray_pids()
+    if remaining:
+        log(f'Xray NOT killed, remaining pids={remaining}')
+        return False
+    return True
+
+def wait_port_free(port, timeout=5.0):
+    """Порт свободен, если мы можем сами на него забиндиться."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        s = socket.socket()
+        try:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind(('127.0.0.1', port))
+            return True
+        except OSError:
+            time.sleep(0.1)
+        finally:
+            s.close()
+    return False
+
+def wait_port_listening(port, timeout=8.0, proc=None):
+    """Ждём, пока новый Xray реально начнёт слушать свой SOCKS-порт."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if proc is not None and proc.poll() is not None:
+            return False
+        try:
+            with socket.create_connection(('127.0.0.1', port), timeout=0.5):
+                return True
+        except OSError:
+            time.sleep(0.1)
+    return False
+
 def build_config_from_vless(vless_url):
     config = parse_vless_url(vless_url)
     net = config["type"]
@@ -255,7 +369,7 @@ def build_config_from_vless(vless_url):
     xray_config = {
         "inbounds": [
             {
-                "port": 1080,
+                "port": SOCKS_PORT,
                 "protocol": "socks",
                 "listen": "127.0.0.1",
                 "settings": {
@@ -282,7 +396,7 @@ def build_config_from_vless(vless_url):
             }
         ]
     }
-    return xray_config, 1080
+    return xray_config, SOCKS_PORT
 
 def build_config_from_json(raw_json):
     xray_config = json.loads(raw_json)
@@ -349,9 +463,10 @@ def main():
         log('Parsed message: ' + str(message))
 
         if 'status' in message:
-            result = subprocess.run(['pgrep', '-f', 'xray'], capture_output=True, text=True)
-            is_running = result.returncode == 0
-            send_message({"running": is_running})
+            pids = get_xray_pids()
+            port, http_port = read_config_ports()
+            log(f'Status: pids={pids}, config_socks_port={port}, config_http_port={http_port}')
+            send_message({"running": bool(pids), "port": port, "httpPort": http_port, "pids": pids})
             return
 
         if 'ping' in message:
@@ -402,10 +517,10 @@ def main():
 
         if 'stop' in message:
             log('Received stop command')
-            subprocess.run(['pkill', '-f', 'xray'])
+            ok = stop_xray()
             if os.path.exists(CONFIG_FILE):
                 os.remove(CONFIG_FILE)
-            log('Xray stopped')
+            log(f'Xray stopped: {ok}')
             send_message({"success": True, "status": "Disconnected"})
             return
 
@@ -426,20 +541,39 @@ def main():
         if message.get('obfuscation'):
             xray_config = apply_obfuscation(xray_config)
 
+        http_port = ensure_http_inbound(xray_config)
+        log(f'Connect: socks_port={socks_port}, http_port={http_port}')
+
+        if not stop_xray():
+            send_message({"success": False, "error": "Не удалось остановить предыдущий процесс Xray"})
+            return
+
+        for _p in (socks_port, http_port):
+            if not wait_port_free(_p):
+                log(f'Port {_p} is still busy after stopping xray')
+                send_message({"success": False, "error": f"Порт {_p} занят другим процессом"})
+                return
+
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(xray_config, f, ensure_ascii=False, indent=2)
         os.chmod(CONFIG_FILE, 0o666)
         log(f'Config file written: {CONFIG_FILE}, socks_port={socks_port}')
 
-        subprocess.run(['pkill', '-f', 'xray run'], capture_output=True)
-        import time; time.sleep(0.3)
-        subprocess.Popen(
+        proc = subprocess.Popen(
             ["xray", "run", "-c", CONFIG_FILE],
             stdout=open('/tmp/xray.log', 'a'),
             stderr=subprocess.STDOUT
         )
-        log('Xray started')
-        send_message({"success": True, "status": "Connected", "port": socks_port})
+
+        if not wait_port_listening(socks_port, proc=proc):
+            code = proc.poll()
+            log(f'Xray failed to listen on {socks_port}, exit_code={code}')
+            stop_xray()
+            send_message({"success": False, "error": f"Xray не поднял SOCKS на порту {socks_port} (см. /tmp/xray.log)"})
+            return
+
+        log(f'Xray started, pid={proc.pid}, socks=127.0.0.1:{socks_port}, http=127.0.0.1:{http_port}')
+        send_message({"success": True, "status": "Connected", "port": socks_port, "httpPort": http_port})
 
     except Exception as e:
         log('Error: ' + str(e))
